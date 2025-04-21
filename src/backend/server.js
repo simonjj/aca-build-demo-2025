@@ -2,28 +2,42 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
-const Redis = require('redis');
 require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Add more detailed CORS configuration
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:80',
-    methods: ['GET', 'POST']
+    origin: "*", // Allow all origins for testing
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-app.use(cors());
+// Add more detailed CORS middleware
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  credentials: true
+}));
 app.use(express.json());
 
-// Initialize Redis client
-const redisClient = Redis.createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379'
+// Test endpoint
+app.get('/test', (req, res) => {
+  console.log('Test endpoint hit');
+  res.status(200).json({ message: 'Backend is working!' });
 });
 
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
-redisClient.connect();
+// Health check endpoint
+app.get('/health', (req, res) => {
+  console.log('Health check hit');
+  res.status(200).json({ status: 'ok' });
+});
+
+// In-memory store for development
+const petStore = new Map();
 
 // Pet state management
 const PETS = {
@@ -34,75 +48,87 @@ const PETS = {
   bouncybun: { mood: 'happy', energy: 100, lastMessage: '' }
 };
 
-// Initialize pet states in Redis
-async function initializePetStates() {
-  for (const [petId, state] of Object.entries(PETS)) {
-    await redisClient.set(`pet:${petId}`, JSON.stringify(state));
+// Initialize pet states
+function initializePetStates() {
+  try {
+    for (const [petId, state] of Object.entries(PETS)) {
+      petStore.set(petId, state);
+    }
+    console.log('Pet states initialized');
+  } catch (error) {
+    console.error('Error initializing pet states:', error);
+    process.exit(1);
   }
 }
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('New client connected');
+  console.log('New client connected', socket.id);
 
   // Send initial pet states to the new client
-  Object.entries(PETS).forEach(async ([petId, state]) => {
-    const storedState = await redisClient.get(`pet:${petId}`);
-    if (storedState) {
-      socket.emit('petUpdate', {
-        petId,
-        state: JSON.parse(storedState)
-      });
-    }
-  });
+  for (const [petId, state] of petStore.entries()) {
+    console.log(`Sending initial state for ${petId}`);
+    socket.emit('petUpdate', {
+      petId,
+      state
+    });
+  }
 
   // Handle pet interactions
-  socket.on('petInteraction', async (data) => {
-    const { petId, action, message } = data;
-    const currentState = JSON.parse(await redisClient.get(`pet:${petId}`) || '{}');
+  socket.on('petInteraction', (data) => {
+    console.log('Received pet interaction:', data);
+    try {
+      const { petId, action, message } = data;
+      const currentState = petStore.get(petId) || {};
 
-    let newState = { ...currentState };
+      let newState = { ...currentState };
 
-    switch (action) {
-      case 'pet':
-        newState.mood = 'happy';
-        newState.energy = Math.min(100, newState.energy + 10);
-        break;
-      case 'feed':
-        newState.energy = Math.min(100, newState.energy + 20);
-        break;
-      case 'poke':
-        newState.mood = 'angry';
-        newState.energy = Math.max(0, newState.energy - 10);
-        break;
-      case 'sing':
-        newState.mood = 'sleepy';
-        newState.energy = Math.min(100, newState.energy + 5);
-        break;
-      case 'message':
-        newState.lastMessage = message;
-        break;
+      switch (action) {
+        case 'pet':
+          newState.mood = 'happy';
+          newState.energy = Math.min(100, newState.energy + 10);
+          break;
+        case 'feed':
+          newState.energy = Math.min(100, newState.energy + 20);
+          break;
+        case 'poke':
+          newState.mood = 'angry';
+          newState.energy = Math.max(0, newState.energy - 10);
+          break;
+        case 'sing':
+          newState.mood = 'sleepy';
+          newState.energy = Math.min(100, newState.energy + 5);
+          break;
+        case 'message':
+          newState.lastMessage = message;
+          break;
+      }
+
+      // Save new state
+      petStore.set(petId, newState);
+      console.log(`Updated state for ${petId}:`, newState);
+
+      // Broadcast the update to all connected clients
+      io.emit('petUpdate', {
+        petId,
+        state: newState
+      });
+    } catch (error) {
+      console.error('Error handling pet interaction:', error);
+      socket.emit('error', { message: 'Failed to process interaction' });
     }
-
-    // Save new state to Redis
-    await redisClient.set(`pet:${petId}`, JSON.stringify(newState));
-
-    // Broadcast the update to all connected clients
-    io.emit('petUpdate', {
-      petId,
-      state: newState
-    });
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
+    console.log('Client disconnected', socket.id);
   });
 });
 
 // Initialize pet states and start server
-initializePetStates().then(() => {
-  const PORT = process.env.PORT || 3001;
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+initializePetStates();
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Test endpoint available at http://localhost:${PORT}/test`);
+  console.log(`Health check available at http://localhost:${PORT}/health`);
 }); 
