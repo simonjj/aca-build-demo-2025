@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
+const { createClient } = require('redis');
 require('dotenv').config();
 
 const app = express();
@@ -36,8 +37,20 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// In-memory store for development
-const petStore = new Map();
+// Initialize Redis client
+const redisClient = createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
+
+// Handle Redis connection errors
+redisClient.on('error', (err) => {
+  console.error('Redis Client Error:', err);
+});
+
+// Handle Redis connection
+redisClient.on('connect', () => {
+  console.log('Connected to Redis');
+});
 
 // Pet state management
 const PETS = {
@@ -48,13 +61,14 @@ const PETS = {
   bouncybun: { mood: 'happy', energy: 100, lastMessage: '' }
 };
 
-// Initialize pet states
-function initializePetStates() {
+// Initialize pet states in Redis
+async function initializePetStates() {
   try {
+    await redisClient.connect();
     for (const [petId, state] of Object.entries(PETS)) {
-      petStore.set(petId, state);
+      await redisClient.set(`pet:${petId}`, JSON.stringify(state));
     }
-    console.log('Pet states initialized');
+    console.log('Pet states initialized in Redis');
   } catch (error) {
     console.error('Error initializing pet states:', error);
     process.exit(1);
@@ -66,20 +80,27 @@ io.on('connection', (socket) => {
   console.log('New client connected', socket.id);
 
   // Send initial pet states to the new client
-  for (const [petId, state] of petStore.entries()) {
-    console.log(`Sending initial state for ${petId}`);
-    socket.emit('petUpdate', {
-      petId,
-      state
-    });
-  }
+  Object.entries(PETS).forEach(async ([petId, state]) => {
+    try {
+      const storedState = await redisClient.get(`pet:${petId}`);
+      if (storedState) {
+        console.log(`Sending initial state for ${petId}`);
+        socket.emit('petUpdate', {
+          petId,
+          state: JSON.parse(storedState)
+        });
+      }
+    } catch (error) {
+      console.error(`Error sending initial state for ${petId}:`, error);
+    }
+  });
 
   // Handle pet interactions
-  socket.on('petInteraction', (data) => {
+  socket.on('petInteraction', async (data) => {
     console.log('Received pet interaction:', data);
     try {
       const { petId, action, message } = data;
-      const currentState = petStore.get(petId) || {};
+      const currentState = JSON.parse(await redisClient.get(`pet:${petId}`) || '{}');
 
       let newState = { ...currentState };
 
@@ -104,8 +125,8 @@ io.on('connection', (socket) => {
           break;
       }
 
-      // Save new state
-      petStore.set(petId, newState);
+      // Save new state to Redis
+      await redisClient.set(`pet:${petId}`, JSON.stringify(newState));
       console.log(`Updated state for ${petId}:`, newState);
 
       // Broadcast the update to all connected clients
@@ -125,10 +146,14 @@ io.on('connection', (socket) => {
 });
 
 // Initialize pet states and start server
-initializePetStates();
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Test endpoint available at http://localhost:${PORT}/test`);
-  console.log(`Health check available at http://localhost:${PORT}/health`);
+initializePetStates().then(() => {
+  const PORT = process.env.PORT || 3001;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Test endpoint available at http://localhost:${PORT}/test`);
+    console.log(`Health check available at http://localhost:${PORT}/health`);
+  });
+}).catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 }); 
