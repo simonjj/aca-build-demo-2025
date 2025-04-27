@@ -75,3 +75,13 @@ Each user chooses which animal to pet, feed, annoy, or cheer up.
 | 2:00 | Show logs: chaos = dropped events = auto recovery | Real-time logging + recovery demo |
 | 2:30 | Ask crowd to "feed Octopus" → food limit hits | Rate limiting logic & fallback pod shown |
 | 3:00 | Bunny users get rerouted to new revision | Traffic split + A/B test results |
+
+
+## Features of this Demo
+
+- Private Endpoint + AFD (GA, showing this as part of the architecture diagram, [sample](https://github.com/microsoft/azure-container-apps/tree/main/templates/bicep/privateEndpointFrontDoor) )
+- Planned maintenance (GA, slide only, potentially a drive-by-mention during demo)
+- Aspire Dashboard + OTEL (GA, in-app and in-demo, potentially with 3rd party)
+- Path-based routing (Preview, in-app and in-demo [sample](https://github.com/Tratcher/HttpRouteConfigBicep) )
+- Workload Profile metrics (not sure yet, we'll have to see what they look like)
+- Durable Task Scheduler (in-app, in-demo [sample](https://github.com/Azure-Samples/Durable-Task-Scheduler/tree/main/samples/portable-sdks/dotnet/FunctionChaining) )
