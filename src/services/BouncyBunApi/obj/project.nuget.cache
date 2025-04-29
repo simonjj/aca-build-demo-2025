@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "dgSpecHash": "eYKLIZ6QJqQ=",
+  "success": true,
+  "projectFilePath": "C:\\Repos\\aca-build-demo-2025\\src\\services\\BouncyBunApi\\BouncyBunApi.csproj",
+  "expectedPackageFiles": [
+    "Q:\\.tools\\.nuget\\packages\\dapr.aspnetcore\\1.9.0\\dapr.aspnetcore.1.9.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\dapr.client\\1.9.0\\dapr.client.1.9.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\google.api.commonprotos\\2.2.0\\google.api.commonprotos.2.2.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\google.protobuf\\3.15.0\\google.protobuf.3.15.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\grpc.core.api\\2.47.0\\grpc.core.api.2.47.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\grpc.net.client\\2.47.0\\grpc.net.client.2.47.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\grpc.net.common\\2.47.0\\grpc.net.common.2.47.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\microsoft.aspnetcore.openapi\\7.0.0\\microsoft.aspnetcore.openapi.7.0.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\3.0.3\\microsoft.extensions.logging.abstractions.3.0.3.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\microsoft.openapi\\1.4.3\\microsoft.openapi.1.4.3.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\system.io.pipelines\\4.7.2\\system.io.pipelines.4.7.2.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\system.net.http.json\\5.0.0\\system.net.http.json.5.0.0.nupkg.sha512",
+    "Q:\\.tools\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\4.5.2\\system.runtime.compilerservices.unsafe.4.5.2.nupkg.sha512"
+  ],
+  "logs": []
+}
