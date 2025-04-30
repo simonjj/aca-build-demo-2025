@@ -27,6 +27,6 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- http://localhost:80/health || exit 1
 
-EXPOSE 80
+EXPOSE 3000
 
 ENTRYPOINT ["dotnet", "BouncyBunApi.dll"]
