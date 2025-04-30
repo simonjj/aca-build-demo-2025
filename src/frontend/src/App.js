@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Grid, Typography, Box, Paper } from '@mui/material';
+import { Container, Grid, Typography, Box, Paper, Alert, Snackbar } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import PetCard from './components/PetCard';
 import PetInteraction from './components/PetInteraction';
-import io from 'socket.io-client';
+import { getPetState, interactWithPet } from './utils/apiConfig';
 
 const theme = createTheme({
   palette: {
@@ -16,32 +16,93 @@ const theme = createTheme({
   },
 });
 
+// Pet configuration following Azure Container Apps microservices pattern
 const PETS = [
-  { id: 'chillturtle', name: 'ChillTurtle', emoji: '🐢' },
-  { id: 'emoocto', name: 'EmoOcto', emoji: '🐙' },
-  { id: 'chaosdragon', name: 'ChaosDragon', emoji: '🐉' },
-  { id: 'babydino', name: 'BabyDino', emoji: '🦖' },
-  { id: 'bouncybun', name: 'BouncyBun', emoji: '🐇' },
+  { id: 'turtle', name: 'ChillTurtle', emoji: '🐢', type: 'turtle' },
+  { id: 'octo', name: 'EmoOcto', emoji: '🐙', type: 'octo' },
+  { id: 'dragon', name: 'ChaosDragon', emoji: '🐉', type: 'dragon' },
+  { id: 'dino', name: 'BabyDino', emoji: '🦖', type: 'dino' },
+  { id: 'bunny', name: 'BouncyBun', emoji: '🐇', type: 'bunny' },
 ];
 
 function App() {
   const [selectedPet, setSelectedPet] = useState(null);
-  const [socket, setSocket] = useState(null);
   const [petStates, setPetStates] = useState({});
+  const [loading, setLoading] = useState({});
+  const [error, setError] = useState(null);
 
+  // Initialize pet states from their respective microservices
   useEffect(() => {
-    const newSocket = io(process.env.REACT_APP_API_URL);
-    setSocket(newSocket);
+    const loadPetStates = async () => {
+      const newLoadingState = {};
+      PETS.forEach(pet => {
+        newLoadingState[pet.id] = true;
+      });
+      setLoading(newLoadingState);
 
-    newSocket.on('petUpdate', (data) => {
+      // For each pet, fetch initial state from its microservice
+      for (const pet of PETS) {
+        try {
+          const state = await getPetState(pet.type);
+          setPetStates(prev => ({
+            ...prev,
+            [pet.id]: state
+          }));
+
+        } catch (err) {
+          console.error(`Failed to load state for ${pet.name}:`, err);
+          setError(`Failed to connect to ${pet.name} API. Please try again later.`);
+          
+        } finally {
+          setLoading(prev => ({
+            ...prev,
+            [pet.id]: false
+          }));
+        }
+      }
+    };
+
+    loadPetStates();
+  }, []);
+
+  const selectPet = (pet) => {
+    setSelectedPet(pet);
+    // Track pet selection for analytics
+    
+  };
+
+  // Handle pet interaction from child component
+  const handlePetInteraction = async (petType, action, message = null) => {
+    if (!selectedPet) return;
+    
+    try {
+      setLoading(prev => ({...prev, [selectedPet.id]: true}));
+      
+      // Call the appropriate backend service based on pet type
+      const updatedState = await interactWithPet(petType, action, message);
+      
+      // Update local state with response from backend
       setPetStates(prev => ({
         ...prev,
-        [data.petId]: data.state
+        [selectedPet.id]: updatedState
       }));
-    });
 
-    return () => newSocket.close();
-  }, []);
+      
+      return updatedState;
+    } catch (err) {
+      console.error(`Interaction failed for ${petType}:`, err);
+      setError(`Failed to ${action} ${selectedPet.name}. Please try again.`);
+      
+      
+      return null;
+    } finally {
+      setLoading(prev => ({...prev, [selectedPet.id]: false}));
+    }
+  };
+
+  const closeError = () => {
+    setError(null);
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -60,8 +121,9 @@ function App() {
                 <PetCard
                   pet={pet}
                   isSelected={selectedPet?.id === pet.id}
-                  onClick={() => setSelectedPet(pet)}
+                  onClick={() => selectPet(pet)}
                   state={petStates[pet.id]}
+                  loading={loading[pet.id]}
                 />
               </Grid>
             ))}
@@ -72,16 +134,23 @@ function App() {
               <Paper elevation={3} sx={{ p: 3 }}>
                 <PetInteraction
                   pet={selectedPet}
-                  socket={socket}
                   state={petStates[selectedPet.id]}
+                  loading={loading[selectedPet.id]}
+                  onInteract={handlePetInteraction}
                 />
               </Paper>
             </Box>
           )}
+          
+          <Snackbar open={!!error} autoHideDuration={6000} onClose={closeError}>
+            <Alert onClose={closeError} severity="error" sx={{ width: '100%' }}>
+              {error}
+            </Alert>
+          </Snackbar>
         </Box>
       </Container>
     </ThemeProvider>
   );
 }
 
-export default App; 
+export default App;
