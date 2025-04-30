@@ -33,36 +33,44 @@ function App() {
 
   // Initialize pet states from their respective microservices
   useEffect(() => {
+    let isMounted = true;
+  
+    // Shared loader fn
     const loadPetStates = async () => {
-      const newLoadingState = {};
-      PETS.forEach(pet => {
-        newLoadingState[pet.id] = true;
+      // mark all as loading
+      setLoading(prev => {
+        const m = { ...prev };
+        PETS.forEach(p => (m[p.id] = true));
+        return m;
       });
-      setLoading(newLoadingState);
-
-      // For each pet, fetch initial state from its microservice
+  
       for (const pet of PETS) {
         try {
           const state = await getPetState(pet.type);
-          setPetStates(prev => ({
-            ...prev,
-            [pet.id]: state
-          }));
-
+          if (!isMounted) return;
+          setPetStates(prev => ({ ...prev, [pet.id]: state }));
         } catch (err) {
           console.error(`Failed to load state for ${pet.name}:`, err);
+          if (!isMounted) return;
           setError(`Failed to connect to ${pet.name} API. Please try again later.`);
-          
         } finally {
-          setLoading(prev => ({
-            ...prev,
-            [pet.id]: false
-          }));
+          if (!isMounted) return;
+          setLoading(prev => ({ ...prev, [pet.id]: false }));
         }
       }
     };
-
+  
+    // initial fetch
     loadPetStates();
+  
+    // poll every 2s
+    const intervalId = setInterval(loadPetStates, 2000);
+  
+    // cleanup on unmount
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, []);
 
   const selectPet = (pet) => {
