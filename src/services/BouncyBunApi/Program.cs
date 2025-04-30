@@ -1,28 +1,24 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Register your services
+// 1) Add Dapr SDK bits
+builder.Services.AddControllers().AddDapr();       // for controller-based Pub/Sub 
+builder.Services.AddDaprClient();                  // for injecting DaprClient
 builder.Services.AddSingleton<PetState>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<BunThoughtsService>();
 
 var app = builder.Build();
 
-// Health check endpoint
+// 2) Enable CloudEvents middleware so Dapr pub/sub works
+app.UseCloudEvents();
+
+// 3) Map the Dapr subscription handler (scans for [Topic])
+app.MapSubscribeHandler();
+
+// 4) Map your controllers
+app.MapControllers();
+
+// 5) Healthz (still a minimal API endpoint)
 app.MapGet("/healthz", () => Results.Ok("Healthy"));
 
-// Interaction endpoint
-app.MapPost("/interact", async (Interaction input, PetState state, BunThoughtsService thoughts) =>
-{
-    state.Apply(input.Action);
-    if (state.ShouldEvolve())
-        await thoughts.TriggerEvolution();
-
-    return Results.Ok(state);
-});
-
-// State endpoint
-app.MapGet("/state", (PetState state) => Results.Ok(state));
-
 app.Run();
-
-record Interaction(string Action);
