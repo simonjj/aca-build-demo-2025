@@ -1,36 +1,60 @@
 using EmoOctoApi.Models;
 using EmoOctoApi.Services;
-using System.Text.Json;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Logs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Kestrel to listen on port 3004
+// 1) Kestrel port
 builder.WebHost.UseUrls("http://0.0.0.0:3004");
 
-// Add services to the container
+// 2) Shared Resource
+var resourceBuilder = ResourceBuilder.CreateDefault()
+    .AddService("EmoOctoApi", "1.0.0")
+    .AddAttributes(new Dictionary<string, object>
+    {
+        ["deployment.environment"] = builder.Environment.EnvironmentName,
+        ["host.name"] = Environment.MachineName
+    });
+
+builder.Services.AddOpenTelemetry()
+   .ConfigureResource(resource => resource.AddService("EmoOctoApi"))
+   .WithTracing(tracing =>
+   {
+       tracing
+           .AddSource("EmoOctoApi")
+           .AddAspNetCoreInstrumentation()
+           .AddHttpClientInstrumentation()
+           .AddConsoleExporter()
+           .AddOtlpExporter();
+   })
+   .WithMetrics(metrics =>
+   {
+       metrics
+           .AddMeter("EmoOctoApi")
+           .AddAspNetCoreInstrumentation()
+           .AddHttpClientInstrumentation()
+           .AddConsoleExporter()
+              .AddOtlpExporter();
+   });
+// 6) Dapr & DI
 builder.Services.AddControllers().AddDapr();
 builder.Services.AddDaprClient();
-
-// Register Octopus State and Services
 builder.Services.AddSingleton<OctoState>();
 builder.Services.AddSingleton<OctoThoughtsService>();
-
-// Add resilient HTTP client
 builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-// 2) Enable CloudEvents middleware so Dapr pub/sub works
 app.UseCloudEvents();
-
-// 3) Map the Dapr subscription handler (scans for [Topic])
 app.MapSubscribeHandler();
-
-// 4) Map your controllers
 app.MapControllers();
-
-// 5) Healthz (still a minimal API endpoint)
 app.MapGet("/healthz", () => Results.Ok("Healthy"));
 
 app.Run();

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using EmoOctoApi.Models;
 using EmoOctoApi.Services;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace EmoOctoApi.Controllers
 {
@@ -16,6 +17,11 @@ namespace EmoOctoApi.Controllers
         private readonly OctoThoughtsService _thoughtsService;
         private const string StateStoreName = "statestore";
         private const string OctoStateKey = "emoocto";
+        private static readonly Meter _meter = new Meter("EmoOctoApi", "1.0.0");
+        private static readonly Counter<long> _interactionsCounter =
+            _meter.CreateCounter<long>(
+                "octo_interactions_total",
+                description: "Total number of octopus interact calls");
 
         public PetController(
             DaprClient daprClient,
@@ -64,7 +70,7 @@ namespace EmoOctoApi.Controllers
         {
             using var activity = new Activity("OctoInteraction").Start();
             activity?.AddTag("action", request.Action);
-
+            _interactionsCounter.Add(1, new KeyValuePair<string, object?>("action", request.Action));
             if (string.IsNullOrEmpty(request.Action))
             {
                 _logger.LogWarning("Interaction request received with empty action");
@@ -172,36 +178,36 @@ namespace EmoOctoApi.Controllers
                         octoState.Chaos += 15;
                         octoState.Happiness -= 10;
 
-                        // Defense mechanisms
-                        if (new Random().Next(10) > 3)
-                        {
-                            // Release ink cloud
-                            octoState.IsInking = true;
-                            octoState.UpdateMood("Scared");
-                            octoState.ChangeColor("Black");
+                        // // Defense mechanisms
+                        // if (new Random().Next(10) > 3)
+                        // {
+                        //     // Release ink cloud
+                        //     octoState.IsInking = true;
+                        //     octoState.UpdateMood("Scared");
+                        //     octoState.ChangeColor("Black");
 
-                            await _daprClient.PublishEventAsync("pubsub", "octo-ink", new
-                            {
-                                Id = OctoStateKey,
-                                Timestamp = DateTime.UtcNow
-                            });
+                        //     await _daprClient.PublishEventAsync("pubsub", "octo-ink", new
+                        //     {
+                        //         Id = OctoStateKey,
+                        //         Timestamp = DateTime.UtcNow
+                        //     });
 
-                            _logger.LogWarning("Octopus poked and released ink defensively! Chaos: {Chaos}", octoState.Chaos);
-                        }
-                        else
-                        {
-                            // Camouflage to hide
-                            octoState.IsCamouflaged = true;
-                            octoState.UpdateMood("Nervous");
-                            _logger.LogInformation("Octopus poked and camouflaged to hide. Chaos: {Chaos}", octoState.Chaos);
+                        //     _logger.LogWarning("Octopus poked and released ink defensively! Chaos: {Chaos}", octoState.Chaos);
+                        // }
+                        // else
+                        // {
+                        //     // Camouflage to hide
+                        //     octoState.IsCamouflaged = true;
+                        //     octoState.UpdateMood("Nervous");
+                        //     _logger.LogInformation("Octopus poked and camouflaged to hide. Chaos: {Chaos}", octoState.Chaos);
 
-                            // Schedule camouflage to wear off
-                            await _daprClient.PublishEventAsync("pubsub", "octo-camouflage", new
-                            {
-                                Id = OctoStateKey,
-                                Timestamp = DateTime.UtcNow
-                            });
-                        }
+                        //     // Schedule camouflage to wear off
+                        //     await _daprClient.PublishEventAsync("pubsub", "octo-camouflage", new
+                        //     {
+                        //         Id = OctoStateKey,
+                        //         Timestamp = DateTime.UtcNow
+                        //     });
+                        // }
                         break;
 
                     case "sing":
