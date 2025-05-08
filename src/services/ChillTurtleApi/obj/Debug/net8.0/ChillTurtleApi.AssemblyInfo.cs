@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ChillTurtleApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+484827b4c44cd8b925298c7c4d02bba18ab439c4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+23e790fb2368cb27117decc49fb654149308447c")]
 [assembly: System.Reflection.AssemblyProductAttribute("ChillTurtleApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ChillTurtleApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

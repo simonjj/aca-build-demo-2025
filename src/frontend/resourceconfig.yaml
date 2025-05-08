@@ -1,0 +1,45 @@
+rules:
+  - description: EmoOcto API route
+    routes:
+      - match:
+          prefix: /api/octo/healthz
+        action:
+          prefixRewrite: /healthz
+    targets:
+      - containerApp: emoocto-api
+
+  - description: BouncyBun API route
+    routes:
+      - match:
+          prefix: /api/bunny/healthz
+        action:
+          prefixRewrite: /healthz
+    targets:
+      - containerApp: bouncy-bun
+
+  - description: ChillTurtle API route
+    routes:
+      - match:
+          prefix: /api/turtle/healthz
+        action:
+          prefixRewrite: /healthz
+    targets:
+      - containerApp: chillturtle-api
+
+  - description: ChaosDragon API route
+    routes:
+      - match:
+          prefix: /api/dragon/healthz
+        action:
+          prefixRewrite: /healthz
+    targets:
+      - containerApp: chaosdragon-api
+
+  - description: BabyDino API route
+    routes:
+      - match:
+          prefix: /api/dino/healthz
+        action:
+          prefixRewrite: /healthz
+    targets:
+      - containerApp: babydino-api

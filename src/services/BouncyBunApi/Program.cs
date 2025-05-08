@@ -10,6 +10,18 @@ builder.Services.AddSingleton<PetState>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<BunThoughtsService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendAllowed", policy =>
+    {
+        policy
+          .AllowAnyOrigin()
+          .AllowAnyHeader()
+          .AllowAnyMethod();
+    });
+});
+
+
 var app = builder.Build();
 
 // 2) Enable CloudEvents middleware so Dapr pub/sub works

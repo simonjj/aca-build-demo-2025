@@ -46,7 +46,8 @@ const petApiEnvMap = {
       const response = await fetch(`${apiUrl}/pet/state${petId ? `?id=${petId}` : ''}`, {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'mode': 'cors'
         }
       });
       

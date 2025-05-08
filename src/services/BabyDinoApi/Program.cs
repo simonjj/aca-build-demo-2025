@@ -7,6 +7,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Kestrel to listen on specified port (3003 for BabyDino)
 builder.WebHost.UseUrls("http://0.0.0.0:3003");
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendAllowed", policy =>
+    {
+        policy
+          .AllowAnyOrigin()
+          .AllowAnyHeader()
+          .AllowAnyMethod();
+    });
+});
+
 // Add services to the container
 // Add services to the container
 builder.Services.AddControllers().AddDapr();

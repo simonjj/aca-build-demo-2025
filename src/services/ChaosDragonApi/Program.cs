@@ -12,6 +12,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Configure Kestrel to listen on port 3002
 builder.WebHost.UseUrls("http://0.0.0.0:3002");
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendAllowed", policy =>
+    {
+        policy
+          .AllowAnyOrigin()
+          .AllowAnyHeader()
+          .AllowAnyMethod();
+    });
+});
+
 
 // Add services to the container
 builder.Services.AddControllers().AddDapr();

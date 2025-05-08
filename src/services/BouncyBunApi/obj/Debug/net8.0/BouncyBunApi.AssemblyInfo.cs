@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BouncyBunApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+95c40d9404b19875eadfee58d9ce9b01f7164796")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+23e790fb2368cb27117decc49fb654149308447c")]
 [assembly: System.Reflection.AssemblyProductAttribute("BouncyBunApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BouncyBunApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

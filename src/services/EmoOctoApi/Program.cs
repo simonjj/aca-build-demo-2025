@@ -14,6 +14,18 @@ var builder = WebApplication.CreateBuilder(args);
 // 1) Kestrel port
 builder.WebHost.UseUrls("http://0.0.0.0:3004");
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendAllowed", policy =>
+    {
+        policy
+          .AllowAnyOrigin()
+          .AllowAnyHeader()
+          .AllowAnyMethod();
+    });
+});
+
+
 // 2) Shared Resource
 var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddService("EmoOctoApi", "1.0.0")

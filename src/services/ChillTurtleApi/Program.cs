@@ -7,6 +7,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 0) Bind Kestrel to 0.0.0.0:3001 so Dapr sidecar can detect the app on port 3001
 builder.WebHost.UseUrls("http://0.0.0.0:3001");
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendAllowed", policy =>
+    {
+        policy
+          .AllowAnyOrigin()
+          .AllowAnyHeader()
+          .AllowAnyMethod();
+    });
+});
+
 
 // 2) Add controllers + Dapr SDK for Pub/Sub
 builder.Services.AddControllers().AddDapr();
