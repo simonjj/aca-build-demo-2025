@@ -36,7 +36,6 @@ const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
       // Make the API call to the appropriate backend service
       const response = await fetch(`${apiUrl}/pet/interact`, {
         method: 'POST',
-        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
         },
