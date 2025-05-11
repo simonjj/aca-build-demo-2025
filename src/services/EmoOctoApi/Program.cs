@@ -8,11 +8,23 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Logs;
+using System.Diagnostics.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1) Kestrel port
 builder.WebHost.UseUrls("http://0.0.0.0:3004");
+var meter = new Meter("EmoOctoApi.GlobalMetrics", "1.0.0");
+
+var requestCounter = meter.CreateCounter<long>(
+    name: "api_requests_total",
+    description: "Counts all incoming HTTP requests per endpoint"
+);
+
+var responseCounter = meter.CreateCounter<long>(
+    name: "api_responses_total",
+    description: "Counts all HTTP responses per endpoint and status code"
+);
 
 builder.Services.AddCors(options =>
 {
@@ -24,6 +36,26 @@ builder.Services.AddCors(options =>
           .AllowAnyMethod();
     });
 });
+
+// before you call .Build()
+builder.Logging
+    // Default log level for all categories
+    .SetMinimumLevel(LogLevel.Warning)
+    // Essential application logs
+    .AddFilter("EmoOctoApi", LogLevel.Information)
+    // Filter out noisy framework logs
+    .AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning)
+    .AddFilter("Microsoft.AspNetCore.Server.Kestrel", LogLevel.Warning)
+    .AddFilter("Microsoft.AspNetCore.Server.Kestrel.Core", LogLevel.Warning)
+    .AddFilter("Microsoft.AspNetCore.Hosting.Internal.WebHost", LogLevel.Warning)
+    .AddFilter("Microsoft.AspNetCore.Mvc", LogLevel.Warning)
+    .AddFilter("Microsoft.AspNetCore.Routing", LogLevel.Warning)
+    .AddFilter("Microsoft.AspNetCore.HttpLogging", LogLevel.Warning)
+    // Custom filters for important logs you do want to keep
+    .AddFilter("Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware.RequestBody", LogLevel.Warning)
+    .AddFilter("Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware.ResponseBody", LogLevel.Warning)
+    // Keep Dapr related logs
+    .AddFilter("Dapr", LogLevel.Information);
 
 
 // 2) Shared Resource
@@ -40,7 +72,7 @@ builder.Services.AddOpenTelemetry()
    .WithTracing(tracing =>
    {
        tracing
-           .AddSource("EmoOctoApi")
+           .AddSource(meter.Name)
            .AddAspNetCoreInstrumentation()
            .AddHttpClientInstrumentation()
            .AddConsoleExporter()
@@ -49,11 +81,17 @@ builder.Services.AddOpenTelemetry()
    .WithMetrics(metrics =>
    {
        metrics
-           .AddMeter("EmoOctoApi")
+           .AddMeter(meter.Name)
            .AddAspNetCoreInstrumentation()
            .AddHttpClientInstrumentation()
            .AddConsoleExporter()
               .AddOtlpExporter();
+   })
+    .WithLogging(logging =>
+   {
+       logging
+           .AddConsoleExporter()
+           .AddOtlpExporter();
    });
 // 6) Dapr & DI
 builder.Services.AddControllers().AddDapr();

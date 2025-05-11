@@ -5,6 +5,14 @@ rules:
           prefix: /api/octo/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: /pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: /pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: emoocto-api
 

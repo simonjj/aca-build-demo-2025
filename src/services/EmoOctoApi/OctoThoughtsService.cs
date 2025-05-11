@@ -132,7 +132,7 @@ namespace EmoOctoApi.Services
                 else if (_moodThoughts.TryGetValue(octoState.CurrentMood, out var moodSpecificThoughts))
                 {
                     thought = moodSpecificThoughts[_random.Next(moodSpecificThoughts.Length)];
-                    _logger.LogInformation("Generated {Mood} thought for octopus", octoState.CurrentMood);
+                    _logger.LogInformation($"Generated {octoState.CurrentMood} thought for octopus");
                 }
                 else
                 {

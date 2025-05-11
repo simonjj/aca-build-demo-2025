@@ -1,9 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Grid, Typography, Box, Paper, Alert, Snackbar } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import PetCard from './components/PetCard';
 import PetInteraction from './components/PetInteraction';
 import { getPetState, interactWithPet } from './utils/apiConfig';
+//import { trace, metrics } from '@opentelemetry/api';
+
+// 2️⃣ Create tracer + meter
+import { tracer, meter } from './telemetry';
+
+// create a counter
+const clickCounter = meter.createCounter('app.button_clicks', {
+  description: 'Counts how often buttons are clicked'
+});
+
+const loadPetStateCounter   = meter.createCounter('app.loadpetstate.counter', {
+    description: 'Counts loadPetState calls'
+  });
+const selectPetCounter       = meter.createCounter('app.selectpet.counter', {
+    description: 'Counts pet selections'
+  });
+const petInteractionCounter  = meter.createCounter('app.petinteraction.counter', {
+    description: 'Counts pet interaction calls'
+  });
 
 const theme = createTheme({
   palette: {
@@ -35,6 +54,9 @@ function App() {
   useEffect(() => {
     let isMounted = true;
   
+    const span = tracer.startSpan('sanity.check');
+    console.log('span started, id =', span.spanContext().spanId);
+    span.end();
     // Shared loader fn
     const loadPetStates = async () => {
       // mark all as loading
@@ -46,6 +68,7 @@ function App() {
   
       for (const pet of PETS) {
         try {
+          loadPetStateCounter.add(1, { op: 'loadPetState', pet: pet.id });
           const state = await getPetState(pet.type);
           if (!isMounted) return;
           setPetStates(prev => ({ ...prev, [pet.id]: state }));
@@ -74,6 +97,7 @@ function App() {
   }, []);
 
   const selectPet = (pet) => {
+    selectPetCounter.add(1, { op: 'selectPet', pet: pet.id });
     setSelectedPet(pet);
     // Track pet selection for analytics
     
@@ -82,7 +106,7 @@ function App() {
   // Handle pet interaction from child component
   const handlePetInteraction = async (petType, action, message = null) => {
     if (!selectedPet) return;
-    
+    petInteractionCounter.add(1, { op: 'petInteraction', pet: petType, action });
     try {
       setLoading(prev => ({...prev, [selectedPet.id]: true}));
       

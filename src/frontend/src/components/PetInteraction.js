@@ -15,12 +15,23 @@ import TouchAppIcon from '@mui/icons-material/TouchApp';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import ChatIcon from '@mui/icons-material/Chat';
 import { getApiUrl } from '../utils/apiConfig.js';
+import { tracer, meter } from '../telemetry';    // ← add this
+
+// create a counter for interactions
+const interactionCounter = meter.createCounter('pet_interactions', {
+  description: 'Counts pet/ poke / feed / sing events'
+});
+
 
 const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const handleInteraction = async (action, message = null) => {
+    const span = tracer.startSpan(`ui.pet.${action}`, {
+      attributes: { pet: pet.name }
+    });
+    interactionCounter.add(1, { action, pet: pet.name });
     try {
       setLoading(true);
       
@@ -67,6 +78,8 @@ const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
       console.error('Pet interaction failed:', err);
       setError(`Failed to interact with ${pet.name}. Please try again.`);
       setLoading(false);
+    } finally{
+      span.end();  // End the span after the interaction is complete
     }
   };
 

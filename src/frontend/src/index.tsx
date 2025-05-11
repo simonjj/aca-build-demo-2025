@@ -1,7 +1,10 @@
+import './telemetry'; // Import telemetry before anything else
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Failed to find the root element');

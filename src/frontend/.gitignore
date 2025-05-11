@@ -94,3 +94,7 @@ temp/
 **/*.kube/
 **/*.helm/
 **/charts/
+node_modules/
+**/node_modules/
+**/node_modules/
+obj/
