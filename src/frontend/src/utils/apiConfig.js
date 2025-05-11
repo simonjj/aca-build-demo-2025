@@ -77,9 +77,9 @@ export const getPetState = async (petType, petId = null) => {
   return context.with(trace.setSpan(context.active(), parentSpan), async () => {
     try {
       // Azure best practice: Create child spans for significant operations
-      const urlSpan = tracer.startSpan('getApiUrl', { attributes: { petType }});
+     // const urlSpan = tracer.startSpan('getApiUrl', { attributes: { petType }});
       const apiUrl = getApiUrl(petType);
-      urlSpan.end();
+     // urlSpan.end();
       
       const endpoint = `/pet/state${petId ? `?id=${petId}` : ''}`;
       const url = `${apiUrl}${endpoint}`;
@@ -113,9 +113,9 @@ export const getPetState = async (petType, petId = null) => {
       fetchSpan.end();
 
       // Azure best practice: Create child span for JSON parsing (can be slow for large payloads)
-      const parseSpan = tracer.startSpan('parseJson');
-      const data = await response.json();
-      parseSpan.end();
+      // const parseSpan = tracer.startSpan('parseJson');
+       const data = await response.json();
+      // parseSpan.end();
       
       if (!response.ok) {
         // Azure best practice: Create error event for failures

@@ -1,4 +1,5 @@
 // src/telemetry.js - Azure Container Apps Best Practice Implementation
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
@@ -17,15 +18,39 @@ window.fetch = (input, init = {}) => {
   return originalFetch(input, init);
 };
 
+// function createResourceAttrs() {
+//   return {
+//     'service.name': 'cloud-petting-zoo-frontend',
+//     'service.version': '1.0.0',
+//     //'deployment.environment': process.env.NODE_ENV || 'development',
+//   };
+// }
+
+// const resource = new Resource(createResourceAttrs());
+
+// const envResource = await detectResources();
+
+// // (b) build your own custom attrs
+// const customResource = resourceFromAttributes({
+//   'service.name': 'cloud-petting-zoo-frontend',
+//   'service.version': '1.0.0',
+//   //'deployment.environment': process.env.NODE_ENV || 'development',
+// });
+
+// (c) merge them together
+const resource = resourceFromAttributes({
+  'service.name': 'cloud-petting-zoo-frontend',
+  /* etc */
+});
 // Azure best practice: Create resource without direct Resource import
-const createResource = () => {
-  // Create simple resource with key attributes
-  return {
-    'service.name': 'cloud-petting-zoo-frontend',
-    'service.version': '1.0.0',
-    'deployment.environment': process.env.NODE_ENV || 'development'
-  };
-};
+// const createResource = () => {
+//   // Create simple resource with key attributes
+//   return {
+//     'service.name': 'cloud-petting-zoo-frontend',
+//     'service.version': '1.0.0',
+//     'deployment.environment': process.env.NODE_ENV || 'development'
+//   };
+// };
 console.log('[OTEL] telemetry.js loaded');
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 console.log('[OTEL] telemetry.js loaded');
@@ -35,7 +60,7 @@ console.log('[OTEL] telemetry.js loaded');
 // Azure best practice: Configure appropriate endpoint based on environment
 const traceExporter = new OTLPTraceExporter();
 const traceProvider = new WebTracerProvider({
-   resource: createResource(),
+   resource: resource,
     spanProcessors: [
       new BatchSpanProcessor(traceExporter, {
         maxExportBatchSize: 10,
@@ -71,7 +96,7 @@ const metricExporter = new OTLPMetricExporter();
 
 // Azure best practice: Use PeriodicExportingMetricReader with appropriate interval
 const meterProvider = new MeterProvider({
-     resource: createResource(),
+     resource: resource,
      metricReaders: [
        new PeriodicExportingMetricReader({
          exporter: metricExporter,
