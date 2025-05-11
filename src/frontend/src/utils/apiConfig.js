@@ -2,7 +2,7 @@ import { context, SpanStatusCode } from '@opentelemetry/api';
 // Azure best practice: Import only the tracer from telemetry.js, not the exporter
 import { tracer } from '../telemetry';
 // Azure best practice: Add missing imports for context propagation
-import { trace } from '@opentelemetry/api';
+//import { trace } from '@opentelemetry/api';
 
 /**
  * API configuration for Azure Container Apps backend services
@@ -74,7 +74,7 @@ export const getPetState = async (petType, petId = null) => {
   });
   
   // Azure best practice: Use context propagation for proper span hierarchy
-  return context.with(trace.setSpan(context.active(), parentSpan), async () => {
+  return context.with(tracer.setSpan(context.active(), parentSpan), async () => {
     try {
       // Azure best practice: Create child spans for significant operations
      // const urlSpan = tracer.startSpan('getApiUrl', { attributes: { petType }});
@@ -169,7 +169,7 @@ export const interactWithPet = async (petType, action, message = null, petId = n
     }
   });
 
-  return context.with(trace.setSpan(context.active(), span), async () => {
+  return context.with(tracer.setSpan(context.active(), span), async () => {
     try {
       const apiUrl = getApiUrl(petType);
       const endpoint = '/pet/interact';

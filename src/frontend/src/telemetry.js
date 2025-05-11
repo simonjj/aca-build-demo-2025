@@ -58,65 +58,57 @@ console.log('[OTEL] telemetry.js loaded');
 // Azure best practice: Create tracer with proper resource identificatio
 
 // Azure best practice: Configure appropriate endpoint based on environment
-const traceExporter = new OTLPTraceExporter();
-const traceProvider = new WebTracerProvider({
-   resource: resource,
-    spanProcessors: [
-      new BatchSpanProcessor(traceExporter, {
-        maxExportBatchSize: 10,
-        scheduledDelayMillis: 1000
-      })
-    ]
-  });
-  
-  traceProvider.register();
-
+const tracerProvider = new WebTracerProvider({resource: resource});
+tracerProvider.addSpanProcessor(
+  new SimpleSpanProcessor(new ConsoleSpanExporter())
+);
+tracerProvider.register();
 
 // Azure best practice: Configure auto-instrumentation with proper settings
 registerInstrumentations({
-  tracerProvider: traceProvider,
+  tracerProvider: tracerProvider,
   instrumentations: [
     new DocumentLoadInstrumentation(),
     new FetchInstrumentation({
-      propagateTraceHeaderCorsUrls: [/.*/],  // Allow trace propagation to any URL
-      clearTimingResources: true
+      propagateTraceHeaderCorsUrls: [/.*/], // inject traceparent on *all* requests
+      clearTimingResources: true,
     }),
     new XMLHttpRequestInstrumentation({
-      propagateTraceHeaderCorsUrls: [/.*/]
+      propagateTraceHeaderCorsUrls: [/.*/],
     }),
   ],
 });
 
 // Export the tracer for manual spans
-export const tracer = traceProvider.getTracer('cloud-petting-zoo-frontend');
+export const tracer = tracerProvider.getTracer('cloud-petting-zoo-frontend');
 
 // ─── Metrics Setup ─────────────────────────────────────────────────────────────
 // Azure best practice: Configure metric exporter with proper endpoint
-const metricExporter = new OTLPMetricExporter();
+// const metricExporter = new OTLPMetricExporter();
 
-// Azure best practice: Use PeriodicExportingMetricReader with appropriate interval
-const meterProvider = new MeterProvider({
-     resource: resource,
-     metricReaders: [
-       new PeriodicExportingMetricReader({
-         exporter: metricExporter,
-         exportIntervalMillis: process.env.NODE_ENV === 'production' ? 30000 : 1000,
-       }),
-     ],
-   });
+// // Azure best practice: Use PeriodicExportingMetricReader with appropriate interval
+// const meterProvider = new MeterProvider({
+//      resource: resource,
+//      metricReaders: [
+//        new PeriodicExportingMetricReader({
+//          exporter: metricExporter,
+//          exportIntervalMillis: process.env.NODE_ENV === 'production' ? 30000 : 1000,
+//        }),
+//      ],
+//    });
 
-// Export the meter for manual metrics
-export const meter = meterProvider.getMeter('cloud-petting-zoo-frontend');
+// // Export the meter for manual metrics
+// export const meter = meterProvider.getMeter('cloud-petting-zoo-frontend');
 
 // Azure best practice: Add shutdown handler for clean teardown
 const shutdown = () => {
-  traceProvider.shutdown()
+  tracerProvider.shutdown()
     .then(() => console.log('Tracing terminated'))
     .catch((error) => console.log('Error terminating tracing', error))
     .finally(() => {
-      meterProvider.shutdown()
-        .then(() => console.log('Metrics terminated'))
-        .catch((error) => console.log('Error terminating metrics', error));
+      // meterProvider.shutdown()
+      //   .then(() => console.log('Metrics terminated'))
+      //   .catch((error) => console.log('Error terminating metrics', error));
     });
 };
 
@@ -124,5 +116,4 @@ const shutdown = () => {
 window.addEventListener('beforeunload', shutdown);
 
 // ────────────────────────────────────────────────────────────────────────────────
-export default traceProvider;
-export { traceProvider, traceExporter, metricExporter, meterProvider };
+export { tracerProvider};
