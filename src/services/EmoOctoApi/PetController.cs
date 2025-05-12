@@ -61,7 +61,7 @@ namespace EmoOctoApi.Controllers
 
                 // 2️⃣ Child span for the Dapr GET from redis
                 OctoState octoState;
-                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Client))
+                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Server))
                 {
                     getSpan?.SetTag("state.store", StateStoreName);
                     getSpan?.SetTag("state.key", OctoStateKey);
@@ -73,7 +73,7 @@ namespace EmoOctoApi.Controllers
                     _logger.LogInformation("State not found; initializing new OctoState");
 
                     // 3️⃣ Child span for the Dapr SAVE to redis
-                    using var saveSpan = _activitySource.StartActivity("Dapr.SaveState", ActivityKind.Client);
+                    using var saveSpan = _activitySource.StartActivity("Dapr.SaveState", ActivityKind.Server);
                     saveSpan?.SetTag("state.store", StateStoreName);
                     saveSpan?.SetTag("state.key", OctoStateKey);
 
@@ -82,7 +82,7 @@ namespace EmoOctoApi.Controllers
                 }
 
                 // 4️⃣ Child span for thought generation (your backend service call)
-                using (var thoughtSpan = _activitySource.StartActivity("GenerateThought", ActivityKind.Internal))
+                using (var thoughtSpan = _activitySource.StartActivity("GenerateThought", ActivityKind.Server))
                 {
                     octoState.LastMessage = await _thoughtsService.GenerateThoughtAsync(octoState);
                     thoughtSpan?.SetTag("thought.length", octoState.LastMessage?.Length ?? 0);
@@ -135,14 +135,14 @@ namespace EmoOctoApi.Controllers
 
             try
             {
-                // _logger.LogInformation("Processing interaction '{Action}'", request.Action);
 
                 // 2️⃣ Child span for Dapr GET
                 OctoState octoState;
-                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Client))
+                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Server))
                 {
                     getSpan?.SetTag("state.store", StateStoreName);
                     getSpan?.SetTag("state.key", OctoStateKey);
+                    activity?.SetTag("http.method", "GET");
                     octoState = await _daprClient.GetStateAsync<OctoState>(StateStoreName, OctoStateKey)
                                  ?? new OctoState();
                 }
@@ -241,16 +241,15 @@ namespace EmoOctoApi.Controllers
         {
             octoState.Chaos += 15;
             _logger.LogInformation($"Poke: Chaos={octoState.Chaos}");
-            // throw new Exception("Poke failed!"); // Simulate an error
-            // if (octoState.Chaos > 5)
-            // {
-            //     octoState.UpdateMood("Angry");
-            //     activity?.AddTag("mood", "Angry");
-            //     _logger.LogError("Poke: Chaos too high, mood set to Angry");
-            //     activity?.SetStatus(ActivityStatusCode.Error, "ChaosTooHigh");
-            //     _errorCounter.Add(1, new[] { new KeyValuePair<string, object?>("endpoint", "Interact"), new KeyValuePair<string, object?>("reason", "ChaosTooHigh") });
-            //     throw new Exception("Chaos too high, mood set to Angry");
-            // }
+            if (octoState.Chaos > 50)
+            {
+                octoState.UpdateMood("Angry");
+                activity?.AddTag("mood", "Angry");
+                _logger.LogError("Poke: Chaos too high, mood set to Angry");
+                activity?.SetStatus(ActivityStatusCode.Error, "ChaosTooHigh");
+                _errorCounter.Add(1, new[] { new KeyValuePair<string, object?>("endpoint", "Interact"), new KeyValuePair<string, object?>("reason", "ChaosTooHigh") });
+                throw new Exception("Chaos too high, mood set to Angry");
+            }
         }
 
         private void HandleSing(OctoState octoState, Activity? activity)
