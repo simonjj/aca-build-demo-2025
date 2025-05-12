@@ -1,9 +1,7 @@
-import { context, SpanStatusCode } from '@opentelemetry/api';
 // Azure best practice: Import only the tracer from telemetry.js, not the exporter
 import { tracer } from '../telemetry';
+import { context, trace, propagation, SpanStatusCode } from '@opentelemetry/api';
 // Azure best practice: Add missing imports for context propagation
-//import { trace } from '@opentelemetry/api';
-
 /**
  * API configuration for Azure Container Apps backend services
  * Following Azure best practices for frontend-backend integration
@@ -63,90 +61,62 @@ export const getApiUrl = (petType) => {
  * @returns {Promise<Object>} The pet state object
  */
 export const getPetState = async (petType, petId = null) => {
-  // Azure best practice: Create a parent span with semantic attributes
+  // 1️⃣ start the root span with semantic attributes
   const parentSpan = tracer.startSpan('getPetState', {
-    attributes: { 
-      petType, 
-      petId: petId || '', 
-      'azure.service': 'container-app',
-      'azure.component': 'frontend'
-    }
+    attributes: {
+      'pet.type':          petType,
+      'pet.id':            petId || '',
+      'azure.service':     'container-app',
+      'azure.component':   'frontend',
+      'http.method':       'GET',
+    },
   });
-  
-  // Azure best practice: Use context propagation for proper span hierarchy
-  return context.with(tracer.setSpan(context.active(), parentSpan), async () => {
-    try {
-      // Azure best practice: Create child spans for significant operations
-     // const urlSpan = tracer.startSpan('getApiUrl', { attributes: { petType }});
-      const apiUrl = getApiUrl(petType);
-     // urlSpan.end();
-      
-      const endpoint = `/pet/state${petId ? `?id=${petId}` : ''}`;
-      const url = `${apiUrl}${endpoint}`;
-      
-      // Azure best practice: Record detailed request information
-      parentSpan.setAttribute('http.url', url);
-      parentSpan.setAttribute('http.method', 'GET');
-      
-      // Azure best practice: Create child span for the fetch operation
-      const fetchSpan = tracer.startSpan('fetch', {
-        attributes: {
-          'http.url': url,
-          'http.method': 'GET'
-        }
-      });
-      
-      // Track timing manually for detailed performance analysis
-      const fetchStart = Date.now();
-      
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      
-      // Azure best practice: Record fetch performance and results
-      fetchSpan.setAttribute('http.status_code', response.status);
-      fetchSpan.setAttribute('http.duration_ms', Date.now() - fetchStart);
-      fetchSpan.setAttribute('success', response.ok);
-      fetchSpan.end();
 
-      // Azure best practice: Create child span for JSON parsing (can be slow for large payloads)
-      // const parseSpan = tracer.startSpan('parseJson');
-       const data = await response.json();
-      // parseSpan.end();
-      
-      if (!response.ok) {
-        // Azure best practice: Create error event for failures
-        parentSpan.addEvent('error', {
-          'error.type': 'HttpError',
-          'error.code': response.status,
-          'error.message': response.statusText
-        });
-        
-        throw new Error(`Failed to fetch pet state: ${response.statusText}`);
+  // 2️⃣ bind it into context & inject only W3C headers
+  const ctx = trace.setSpan(context.active(), parentSpan);
+  const headers = {};
+  propagation.inject(ctx, headers);
+
+  try {
+    // 3️⃣ build URL
+    const apiUrl   = getApiUrl(petType);
+    const endpoint = `/pet/state${petId ? `?id=${petId}` : ''}`;
+    const url      = `${apiUrl}${endpoint}`;
+
+    // record URL on the span
+    parentSpan.setAttribute('http.url', url);
+
+    // 4️⃣ do your fetch with the traceparent header
+    const response = await fetch(url, {
+      headers: {
+        ...headers,
+        'Accept':        'application/json',
+        'Content-Type':  'application/json',
       }
-      
-      // Azure best practice: Record business-level attributes
-      parentSpan.setAttribute('pet.mood', data.mood || 'unknown');
-      parentSpan.setAttribute('pet.energy', data.energy || 0);
-      
-      return data;
-    } catch (error) {
-      // Azure best practice: Record exception with details
-      parentSpan.recordException(error);
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
       parentSpan.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error.message
+        code:    SpanStatusCode.ERROR,
+        message: response.statusText
       });
-      
-      throw error;
-    } finally {
-      // Azure best practice: End the span which triggers export through configured processor
-      parentSpan.end();
+      throw new Error(`Failed to fetch pet state: ${response.statusText}`);
     }
-  });
+
+    return data;
+  } catch (err) {
+    parentSpan.recordException(err);
+    parentSpan.setStatus({
+      code:    SpanStatusCode.ERROR,
+      message: err.message
+    });
+    throw err;
+  } finally {
+    // 5️⃣ close out the root span
+    parentSpan.end();
+  }
 };
 
 /**
@@ -157,96 +127,104 @@ export const getPetState = async (petType, petId = null) => {
  * @param {string} petId - Optional pet ID for multi-instance pets
  * @returns {Promise<Object>} The updated pet state
  */
-export const interactWithPet = async (petType, action, message = null, petId = null) => {
-  // Azure best practice: Create span with business context attributes
+export const interactWithPet = async (
+  petType,
+  action,
+  message = null,
+  petId   = null
+) => {
+  // 1️⃣ start your root span with biz context
   const span = tracer.startSpan('interactWithPet', {
-    attributes: { 
-      petType, 
+    attributes: {
+      'pet.type':            petType,
+      'interaction.action':  action,
+      'azure.service':       'container-app',
+      'azure.component':     'frontend',
+      'business.transaction':'pet_interaction',
+      'http.method':         'POST',
+    },
+  });
+
+  // 2️⃣ bind it into a new context & inject traceparent header
+  const ctx     = trace.setSpan(context.active(), span);
+  const headers = {};
+  propagation.inject(ctx, headers);
+
+  try {
+    // build URL + payload
+    const apiUrl   = getApiUrl(petType);
+    const url      = `${apiUrl}/pet/interact`;
+    const payload  = {
       action,
-      'azure.service': 'container-app',
-      'azure.component': 'frontend',
-      'business.transaction': 'pet_interaction'
-    }
-  });
+      ...(message && { message }),
+      ...(petId   && { id: petId   }),
+    };
 
-  return context.with(tracer.setSpan(context.active(), span), async () => {
-    try {
-      const apiUrl = getApiUrl(petType);
-      const endpoint = '/pet/interact';
-      const url = `${apiUrl}${endpoint}`;
-      
-      const payload = {
-        action,
-        ...(message && { message }),
-        ...(petId && { id: petId })
-      };
-      
-      // Azure best practice: Record detailed request payload attributes
-      span.setAttribute('http.url', url);
-      span.setAttribute('http.method', 'POST');
-      span.setAttribute('request.action', action);
-      span.setAttribute('request.size', JSON.stringify(payload).length);
-      
-      // Azure best practice: Record operation start for SLO monitoring
-      span.addEvent('operation.start');
-      const operationStart = Date.now();
+    // record HTTP details
+    span.setAttribute('http.url',    url);
+    span.setAttribute('request.action', action);
+    span.setAttribute('request.size',  JSON.stringify(payload).length);
 
-      const response = await fetch(url, {
-        method: 'POST',
+    // mark operation start
+    span.addEvent('operation.start');
+    const startMs = Date.now();
+
+    // 3️⃣ do the fetch under the same context
+    const response = await context.with(ctx, () =>
+      fetch(url, {
+        method:  'POST',
         headers: {
+          ...headers,
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept':        'application/json'
         },
-        body: JSON.stringify(payload)
-      });
-      
-      // Azure best practice: Record operation duration for performance monitoring
-      const duration = Date.now() - operationStart;
-      span.addEvent('operation.end', { durationMs: duration });
-      span.setAttribute('http.duration_ms', duration);
-      
-      // Azure best practice: Record SLI metrics as span attributes
-      if (duration > 1000) {
-        span.setAttribute('slo.exceeded', true);
-        span.setAttribute('slo.threshold_ms', 1000);
-      }
-      
-      span.setAttribute('http.status_code', response.status);
+        body: JSON.stringify(payload),
+      })
+    );
 
-      if (!response.ok) {
-        // Azure best practice: Structured error recording
-        span.addEvent('error', {
-          'error.type': 'HttpError',
-          'error.code': response.status,
-          'error.message': response.statusText
-        });
-        
-        throw new Error(`Failed to interact with ${petType}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Azure best practice: Record business outcome
-      span.setAttribute('outcome.success', true);
-      span.setAttribute('pet.mood_changed', data.mood !== payload.mood);
-      
-      return data;
-    } catch (error) {
-      // Azure best practice: Record exception details
-      span.recordException(error);
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error.message
-      });
-      
-      // Azure best practice: Record business outcome for errors
-      span.setAttribute('outcome.success', false);
-      span.setAttribute('error.detail', error.message);
-      
-      throw error;
-    } finally {
-      // Azure best practice: Always end spans to ensure they're exported
-      span.end();
+    // record timing & end event
+    const duration = Date.now() - startMs;
+    span.addEvent('operation.end', { durationMs: duration });
+    span.setAttribute('http.duration_ms', duration);
+    if (duration > 1000) {
+      span.setAttribute('slo.exceeded',      true);
+      span.setAttribute('slo.threshold_ms', 1000);
     }
-  });
+
+    span.setAttribute('http.status_code', response.status);
+
+    if (!response.ok) {
+      span.addEvent('error', {
+        'error.type':    'HttpError',
+        'error.code':     response.status,
+        'error.message':  response.statusText
+      });
+      span.setStatus({
+        code:    SpanStatusCode.ERROR,
+        message: response.statusText
+      });
+      throw new Error(`Failed to interact with ${petType}: ${response.statusText}`);
+    }
+
+    // parse result + record business outcome
+    const data = await response.json();
+    span.setAttribute('outcome.success',    true);
+    span.setAttribute('pet.mood_changed',   data.mood !== payload.mood);
+
+    return data;
+  } catch (err) {
+    // record exception & mark span errored
+    span.recordException(err);
+    span.setStatus({
+      code:    SpanStatusCode.ERROR,
+      message: err.message
+    });
+    span.setAttribute('outcome.success', false);
+    span.setAttribute('error.detail',     err.message);
+
+    throw err;
+  } finally {
+// Azure best practice: Always end spans to ensure they're exported
+    span.end();
+  }
 };

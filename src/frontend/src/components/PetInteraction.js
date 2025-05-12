@@ -17,12 +17,6 @@ import ChatIcon from '@mui/icons-material/Chat';
 import { getApiUrl } from '../utils/apiConfig.js';
 import { tracer } from '../telemetry';    // ← add this
 
-// create a counter for interactions
-const interactionCounter = meter.createCounter('pet_interactions', {
-  description: 'Counts pet/ poke / feed / sing events'
-});
-
-
 const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,7 +25,6 @@ const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
     const span = tracer.startSpan(`ui.pet.${action}`, {
       attributes: { pet: pet.name }
     });
-    interactionCounter.add(1, { action, pet: pet.name });
     try {
       setLoading(true);
       
