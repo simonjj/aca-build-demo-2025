@@ -56,8 +56,6 @@ namespace EmoOctoApi.Controllers
             var sw = Stopwatch.StartNew();
             try
             {
-                _logger.LogInformation("Fetching octopus state from Dapr store");
-                _logger.LogInformation("GET /pet/state called");
 
                 // 2️⃣ Child span for the Dapr GET from redis
                 OctoState octoState;
@@ -239,18 +237,43 @@ namespace EmoOctoApi.Controllers
 
         private void HandlePoke(OctoState octoState, Activity? activity)
         {
+            // Azure best practice: Add tracing events for important state changes
+            activity?.AddEvent(new ActivityEvent("PokeStarted", tags: new ActivityTagsCollection(
+                new[] { new KeyValuePair<string, object?>("initialChaos", octoState.Chaos) })));
+
             octoState.Chaos += 15;
             _logger.LogInformation($"Poke: Chaos={octoState.Chaos}");
-            if (octoState.Chaos > 50)
+
+            // Azure best practice: Apply proper throttling with structured logging
+            if (octoState.Chaos > 100)
             {
-                octoState.UpdateMood("Angry");
-                activity?.AddTag("mood", "Angry");
-                _logger.LogError("Poke: Chaos too high, mood set to Angry");
-                activity?.SetStatus(ActivityStatusCode.Error, "ChaosTooHigh");
-                _errorCounter.Add(1, new[] { new KeyValuePair<string, object?>("endpoint", "Interact"), new KeyValuePair<string, object?>("reason", "ChaosTooHigh") });
-                throw new Exception("Chaos too high, mood set to Angry");
+                // Azure best practice: Record throttling events in metrics for monitoring
+                _errorCounter.Add(1, new[] {
+            new KeyValuePair<string, object?>("endpoint", "Interact"),
+            new KeyValuePair<string, object?>("reason", "ThrottlingApplied")
+        });
+
+                activity?.AddTag("throttling.applied", true);
+                activity?.AddEvent(new ActivityEvent("ThrottlingApplied"));
+
+                octoState.UpdateMood("Furious");
+                octoState.LastMessage = "Octopus is overwhelmed and needs a break. Try again later.";
+
+                _logger.LogWarning($"Throttling applied: Chaos={octoState.Chaos}");
+
+                // Azure best practice: Add contextual information to span for better diagnostics
+                activity?.AddTag("mood", "Furious");
+                activity?.SetStatus(ActivityStatusCode.Error, "ThrottlingApplied");
+
+                throw new ThrottlingException(
+                    $"Chaos level too extreme ({octoState.Chaos}). Throttling!"
+                );
             }
+
+            activity?.AddEvent(new ActivityEvent("PokeCompleted", tags: new ActivityTagsCollection(
+                new[] { new KeyValuePair<string, object?>("finalChaos", octoState.Chaos) })));
         }
+
 
         private void HandleSing(OctoState octoState, Activity? activity)
         {
@@ -262,6 +285,17 @@ namespace EmoOctoApi.Controllers
         {
             octoState.LastMessage = message ?? string.Empty;
             _logger.LogInformation($"Message: {message}");
+        }
+
+        // Azure best practice: Create a specific exception type for throttling to enable proper handling/status codes
+        public class ThrottlingException : Exception
+        {
+            public string message { get; } = "";
+
+            public ThrottlingException(string message) : base(message)
+            {
+                this.message = message;
+            }
         }
     }
 }
