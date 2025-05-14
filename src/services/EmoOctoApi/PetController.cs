@@ -36,6 +36,18 @@ namespace EmoOctoApi.Controllers
         private static readonly Histogram<double> _durationHistogram =
             _meter.CreateHistogram<double>("octo_request_duration_ms", description: "Request duration in milliseconds");
 
+        // Add this with your other metrics at the top of the class
+        private static readonly ObservableGauge<int> _chaosGauge =
+            _meter.CreateObservableGauge<int>("octo_chaos_level",
+                () => new[] { new Measurement<int>(GetCurrentChaosLevel()) },
+                description: "Current chaos level of the octopus");
+
+        // Add this static property to store the current chaos level
+        private static int _currentChaosLevel = 0;
+
+        // Add this helper method to get the current chaos level
+        private static int GetCurrentChaosLevel() => _currentChaosLevel;
+
         public PetController(
             DaprClient daprClient,
             ILogger<PetController> logger,
@@ -140,7 +152,7 @@ namespace EmoOctoApi.Controllers
                 {
                     getSpan?.SetTag("state.store", StateStoreName);
                     getSpan?.SetTag("state.key", OctoStateKey);
-                    activity?.SetTag("http.method", "GET");
+                    getSpan?.SetTag("http.method", "GET");
                     octoState = await _daprClient.GetStateAsync<OctoState>(StateStoreName, OctoStateKey)
                                  ?? new OctoState();
                 }
@@ -226,13 +238,17 @@ namespace EmoOctoApi.Controllers
                 octoState.UpdateMood("Happy");
                 activity?.AddTag("mood", "Happy");
             }
-            _logger.LogInformation($"Pet: Happiness={octoState.Happiness}"); ;
         }
 
         private void HandleFeed(OctoState octoState, Activity? activity)
         {
             octoState.Energy += 10;
-            _logger.LogInformation($"Feed: Energy={octoState.Energy}");
+            if (octoState.Energy > 80)
+            {
+                octoState.UpdateMood("Energetic");
+                activity?.AddTag("mood", "Energetic");
+            }
+
         }
 
         private void HandlePoke(OctoState octoState, Activity? activity)
@@ -243,9 +259,24 @@ namespace EmoOctoApi.Controllers
 
             octoState.Chaos += 15;
             _logger.LogInformation($"Poke: Chaos={octoState.Chaos}");
+            if (octoState.Chaos > 50)
+            {
+                octoState.UpdateMood("Nervous");
+                activity?.AddTag("mood", "Nervous");
+            }
+            else if (octoState.Chaos > 75)
+            {
+                octoState.UpdateMood("Angry");
+                activity?.AddTag("mood", "Angry");
+            }
+            else if (octoState.Chaos > 100)
+            {
+                octoState.UpdateMood("Furious");
+                activity?.AddTag("mood", "Furious");
+            }
 
             // Azure best practice: Apply proper throttling with structured logging
-            if (octoState.Chaos > 100)
+            if (octoState.Chaos > 10000)
             {
                 // Azure best practice: Record throttling events in metrics for monitoring
                 _errorCounter.Add(1, new[] {
@@ -278,13 +309,12 @@ namespace EmoOctoApi.Controllers
         private void HandleSing(OctoState octoState, Activity? activity)
         {
             octoState.Chaos = Math.Max(0, octoState.Chaos - 10);
-            _logger.LogInformation($"Sing: Chaos now={octoState.Chaos}");
+            _currentChaosLevel = octoState.Chaos;
         }
 
         private void HandleMessage(OctoState octoState, string? message, Activity? activity)
         {
             octoState.LastMessage = message ?? string.Empty;
-            _logger.LogInformation($"Message: {message}");
         }
 
         // Azure best practice: Create a specific exception type for throttling to enable proper handling/status codes

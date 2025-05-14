@@ -5,6 +5,7 @@ namespace EmoOctoApi.Models
     /// </summary>
     public class OctoState
     {
+        public string Mood { get; set; } = "Content";
         // Core state properties across all pets
         public int Happiness { get; set; } = 50;
         public int Energy { get; set; } = 65;
@@ -14,6 +15,7 @@ namespace EmoOctoApi.Models
         public string? LastMessage { get; set; }
         public DateTime LastInteraction { get; set; } = DateTime.UtcNow;
         public DateTime? LastEvent { get; set; }
+        // Azure best practice: Add ThrottleUntil property for rate limiting
 
         // EmoOcto specific properties
         public string CurrentMood { get; set; } = "Curious";
@@ -36,16 +38,7 @@ namespace EmoOctoApi.Models
         // Mood management methods
         public void UpdateMood(string mood)
         {
-            CurrentMood = mood;
-
-            if (!MoodHistory.ContainsKey(mood))
-            {
-                MoodHistory[mood] = 1;
-            }
-            else
-            {
-                MoodHistory[mood]++;
-            }
+            Mood = mood;
         }
 
         // Color change method

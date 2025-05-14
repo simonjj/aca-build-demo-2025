@@ -13,15 +13,21 @@ const StyledCard = styled(Card)(({ theme, isSelected }) => ({
 
 const PetCard = ({ pet, isSelected, onClick, state }) => {
   const getMoodEmoji = (mood) => {
-    switch (mood) {
+    // Azure best practice: Use case-insensitive comparison for mood states
+    const normalizedMood = mood?.toLowerCase();
+    
+    switch (normalizedMood) {
       case 'happy': return '😊';
-      case 'sad': return '😢';
+      case 'content': return '😌';
+      case 'furious': return '😡';
       case 'angry': return '😠';
+      case 'sad': return '😢';
       case 'sleepy': return '😴';
+      case 'energetic': return '⚡';
+      case 'hungry': return '🍔';
       default: return '😐';
     }
   };
-
   return (
     <StyledCard isSelected={isSelected} onClick={onClick}>
       <CardMedia
@@ -44,10 +50,10 @@ const PetCard = ({ pet, isSelected, onClick, state }) => {
         {state && (
           <Box sx={{ mt: 2 }}>
             <Chip
-              label={`Mood: ${getMoodEmoji(state.mood)}`}
-              color="primary"
-              variant="outlined"
-              sx={{ mr: 1 }}
+             label={`Mood: ${getMoodEmoji(state.mood)} (${state.mood || 'none'})`}
+             color="primary"
+             variant="outlined"
+             sx={{ mr: 1 }}
             />
             <Chip
               label={`Energy: ${state.energy}%`}
