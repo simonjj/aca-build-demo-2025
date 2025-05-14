@@ -4,6 +4,7 @@ namespace ChaosDragonApi.Models
 {
     public class DragonState
     {
+        public string Mood { get; set; } = "Unpredictable";
         // Core state properties
         public int Happiness { get; set; } = 30;
         public int Energy { get; set; } = 50;

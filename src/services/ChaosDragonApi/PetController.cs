@@ -316,6 +316,45 @@ namespace ChaosDragonApi.Controllers
             }
         }
 
+        public void UpdateMood(DragonState state)
+        {
+
+            // Azure best practice: Use deterministic rules with clear priority ordering
+            if (state.IsBreathingFire && state.Chaos > 80)
+            {
+                state.Mood = "Enraged";
+            }
+            else if (state.RageLevel > 75)
+            {
+                state.Mood = "Furious";
+            }
+            else if (state.Energy < 20)
+            {
+                state.Mood = "Lethargic";
+            }
+            else if (state.Happiness > 80 && state.Energy > 70)
+            {
+                state.Mood = "Playful";
+            }
+            else if (state.Happiness > 60)
+            {
+                state.Mood = "Content";
+            }
+            else if (state.Energy > 80)
+            {
+                state.Mood = "Restless";
+            }
+            else if (state.Chaos > 50)
+            {
+                state.Mood = "Unpredictable";
+            }
+            else
+            {
+                state.Mood = "Calm";
+            }
+
+        }
+
         // Custom exception for dragon chaos
         private class DragonChaosException : Exception
         {

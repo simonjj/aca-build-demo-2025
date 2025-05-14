@@ -1,3 +1,4 @@
+
 using Dapr.Client;
 using Microsoft.AspNetCore.Mvc;
 using ChillTurtleApi.Models;
@@ -52,6 +53,7 @@ namespace ChillTurtleApi.Controllers
             }
 
             var turtleState = await _daprClient.GetStateAsync<TurtleState>(StateStoreName, TurtleStateKey) ?? new TurtleState();
+            UpdateMood(turtleState); // Update mood based on current state
 
             // Turtle is slow to respond - add some delay to simulate turtle behavior
             if (!turtleState.IsOverwhelmed)
@@ -202,6 +204,49 @@ namespace ChillTurtleApi.Controllers
             }
 
             return Ok();
+        }
+
+        private void UpdateMood(TurtleState turtleState)
+        {
+            // Azure best practice: Use deterministic rules for mood calculation
+            string previousMood = turtleState.Mood;
+
+            // Determine mood based on key metrics
+            if (turtleState.IsInShell)
+            {
+                turtleState.Mood = "Hiding";
+            }
+            else if (turtleState.StressLevel > 70)
+            {
+                turtleState.Mood = "Anxious";
+            }
+            else if (turtleState.Happiness > 80)
+            {
+                turtleState.Mood = "Happy";
+            }
+            else if (turtleState.Happiness > 60)
+            {
+                turtleState.Mood = "Content";
+            }
+            else if (turtleState.Energy < 20)
+            {
+                turtleState.Mood = "Sleepy";
+            }
+            else if (turtleState.Chaos > 50)
+            {
+                turtleState.Mood = "Agitated";
+            }
+            else
+            {
+                turtleState.Mood = "Calm"; // Default turtle mood - they're chill
+            }
+
+            // Log mood changes for observability
+            if (previousMood != turtleState.Mood)
+            {
+                _logger.LogInformation("Turtle mood changed from {PreviousMood} to {CurrentMood}",
+                    previousMood, turtleState.Mood);
+            }
         }
     }
 }
