@@ -5,6 +5,7 @@ namespace BabyDinoApi.Models
     /// </summary>
     public class DinoState
     {
+        public string Mood { get; set; } = "Playful";
         // Core state properties across all pets
         public int Happiness { get; set; } = 60;
         public int Energy { get; set; } = 70;

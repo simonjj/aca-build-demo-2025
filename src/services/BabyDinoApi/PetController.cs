@@ -221,6 +221,7 @@ namespace BabyDinoApi.Controllers
                 // Update interaction history
                 dinoState.LastInteraction = DateTime.UtcNow;
 
+                UpdateMood(dinoState);
                 // Save updated state
                 await _daprClient.SaveStateAsync(StateStoreName, DinoStateKey, dinoState);
 
@@ -297,6 +298,26 @@ namespace BabyDinoApi.Controllers
             {
                 _logger.LogError(ex, "Error handling nap event for baby dino");
                 return StatusCode(500);
+            }
+        }
+
+        public void UpdateMood(DinoState dinoState)
+        {
+            if (dinoState.Happiness < 20)
+            {
+                dinoState.Mood = "Sad";
+            }
+            else if (dinoState.Energy < 20)
+            {
+                dinoState.Mood = "Tired";
+            }
+            else if (dinoState.Chaos > 80)
+            {
+                dinoState.Mood = "Hyperactive";
+            }
+            else
+            {
+                dinoState.Mood = "Playful";
             }
         }
     }

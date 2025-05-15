@@ -169,12 +169,6 @@ namespace EmoOctoApi.Controllers
                     case "poke":
                         HandlePoke(octoState, activity);
                         break;
-                    case "sing":
-                        HandleSing(octoState, activity);
-                        break;
-                    case "message":
-                        HandleMessage(octoState, request.Message, activity);
-                        break;
                     default:
                         _logger.LogWarning($"Unknown action: {request.Action}");
                         activity?.SetStatus(ActivityStatusCode.Error, "UnknownAction");
@@ -276,7 +270,7 @@ namespace EmoOctoApi.Controllers
             }
 
             // Azure best practice: Apply proper throttling with structured logging
-            if (octoState.Chaos > 10000)
+            if (octoState.Chaos > 20000)
             {
                 // Azure best practice: Record throttling events in metrics for monitoring
                 _errorCounter.Add(1, new[] {
@@ -303,18 +297,6 @@ namespace EmoOctoApi.Controllers
 
             activity?.AddEvent(new ActivityEvent("PokeCompleted", tags: new ActivityTagsCollection(
                 new[] { new KeyValuePair<string, object?>("finalChaos", octoState.Chaos) })));
-        }
-
-
-        private void HandleSing(OctoState octoState, Activity? activity)
-        {
-            octoState.Chaos = Math.Max(0, octoState.Chaos - 10);
-            _currentChaosLevel = octoState.Chaos;
-        }
-
-        private void HandleMessage(OctoState octoState, string? message, Activity? activity)
-        {
-            octoState.LastMessage = message ?? string.Empty;
         }
 
         // Azure best practice: Create a specific exception type for throttling to enable proper handling/status codes

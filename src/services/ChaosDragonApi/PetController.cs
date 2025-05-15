@@ -208,6 +208,7 @@ namespace ChaosDragonApi.Controllers
                 dragonState.InteractionCount++;
 
                 // Save updated state
+                UpdateMood(dragonState);
                 await _daprClient.SaveStateAsync(StateStoreName, DragonStateKey, dragonState);
 
                 // Generate thought
