@@ -6,11 +6,11 @@ rules:
         action:
           prefixRewrite: /healthz
       - match:
-          prefix: /pet/interact
+          prefix: api/octo/pet/interact
         action:
           prefixRewrite: /pet/interact
       - match:
-          prefix: /pet/state
+          prefix: api/octo/pet/state
         action:
           prefixRewrite: /pet/state
     targets:
@@ -22,6 +22,14 @@ rules:
           prefix: /api/bunny/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: api/bunny/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: api/bunny/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: bouncy-bun
 
@@ -31,6 +39,14 @@ rules:
           prefix: /api/turtle/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: api/turtle/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: api/turtle/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: chillturtle-api
 
@@ -40,6 +56,14 @@ rules:
           prefix: /api/dragon/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: api/dragon/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: api/dragon/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: chaosdragon-api
 
@@ -49,5 +73,13 @@ rules:
           prefix: /api/dino/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: api/dino/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: api/dino/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: babydino-api
