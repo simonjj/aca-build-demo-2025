@@ -104,18 +104,6 @@ namespace BabyDinoApi.Controllers
                             _logger.LogInformation("Baby dino woke up for food");
                         }
 
-                        // Baby dinos sometimes learn tricks when fed
-                        if (new Random().Next(10) > 7)
-                        {
-                            string[] possibleTricks = { "spin", "hop", "roar", "tail wag", "hide-and-seek" };
-                            string newTrick = possibleTricks[new Random().Next(possibleTricks.Length)];
-
-                            if (dinoState.LearnTrick(newTrick))
-                            {
-                                _logger.LogInformation("Baby dino learned a new trick: {Trick}", newTrick);
-                            }
-                        }
-
                         _logger.LogInformation("Baby dino fed. Energy: {Energy}, Growth: {Growth}",
                             dinoState.Energy, dinoState.Growth);
                         break;
@@ -147,76 +135,10 @@ namespace BabyDinoApi.Controllers
                         _logger.LogInformation("Baby dino poked. Chaos: {Chaos}, Happiness: {Happiness}",
                             dinoState.Chaos, dinoState.Happiness);
                         break;
-
-                    case "sing":
-                        // Singing can calm the baby dino or make it sleepy
-                        dinoState.Chaos = Math.Max(0, dinoState.Chaos - 10);
-
-                        // Higher chance of napping if energy is low
-                        if (!dinoState.IsNapping && (dinoState.Energy < 50 || new Random().Next(10) > 7))
-                        {
-                            dinoState.IsNapping = true;
-                            _logger.LogInformation("Baby dino fell asleep from the singing");
-
-                            // Schedule a wake-up event
-                            await _daprClient.PublishEventAsync("pubsub", "dino-nap", new
-                            {
-                                Id = DinoStateKey,
-                                Timestamp = DateTime.UtcNow
-                            });
-                        }
-
-                        _logger.LogInformation("Sang to baby dino. Chaos: {Chaos}, IsNapping: {IsNapping}",
-                            dinoState.Chaos, dinoState.IsNapping);
-                        break;
-
-                    case "message":
-                        if (!string.IsNullOrEmpty(request.Message))
-                        {
-                            dinoState.LastMessage = request.Message;
-
-                            // Baby dinos might learn from messages
-                            if (request.Message.Contains("trick") && !dinoState.IsNapping)
-                            {
-                                string[] possibleTricks = { "bow", "roll", "play dead", "dance", "catch" };
-                                string trickToLearn = possibleTricks[new Random().Next(possibleTricks.Length)];
-
-                                if (dinoState.LearnTrick(trickToLearn))
-                                {
-                                    _logger.LogInformation("Baby dino learned a new trick from message: {Trick}", trickToLearn);
-                                }
-                            }
-
-                            _logger.LogInformation("Message sent to baby dino: {Message}", request.Message);
-                        }
-                        break;
-
                     default:
                         _logger.LogWarning("Unknown baby dino action requested: {Action}", request.Action);
                         return BadRequest(new { error = $"Unknown action: {request.Action}" });
                 }
-
-                // Check for evolution criteria
-                if (dinoState.ShouldEvolve())
-                {
-                    dinoState.IsEvolved = true;
-                    dinoState.Evolution = "JuvenileDino";
-                    dinoState.CutenessFactor -= 10; // Still cute, but more mature
-                    dinoState.PlayfulnessLevel -= 5; // Still playful, but more dignified
-
-                    // Publish evolution event
-                    await _daprClient.PublishEventAsync("pubsub", "dino-evolved", new
-                    {
-                        Id = DinoStateKey,
-                        Evolution = dinoState.Evolution,
-                        Timestamp = DateTime.UtcNow
-                    });
-
-                    _logger.LogInformation("Baby dino evolved to {Evolution}!", dinoState.Evolution);
-                }
-
-                // Keep values within bounds
-                dinoState.NormalizeValues();
 
                 // Update interaction history
                 dinoState.LastInteraction = DateTime.UtcNow;
@@ -235,69 +157,6 @@ namespace BabyDinoApi.Controllers
             {
                 _logger.LogError(ex, "Error processing baby dino interaction");
                 return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Internal server error" });
-            }
-        }
-
-        [Topic("pubsub", "global-event")]
-        [HttpPost("events")]
-        public async Task<IActionResult> HandleGlobalEvent([FromBody] dynamic eventData)
-        {
-            _logger.LogInformation("Baby dino received global event");
-
-            try
-            {
-                var dinoState = await _daprClient.GetStateAsync<DinoState>(StateStoreName, DinoStateKey) ?? new DinoState();
-                dinoState.LastEvent = DateTime.UtcNow;
-
-                // Baby dinos get excited by events
-                dinoState.PlayfulnessLevel += 5;
-                dinoState.Chaos += 3;
-
-                // Sometimes they wake up from events
-                if (dinoState.IsNapping && new Random().Next(10) > 7)
-                {
-                    dinoState.IsNapping = false;
-                    _logger.LogInformation("Baby dino woke up from global event");
-                }
-
-                await _daprClient.SaveStateAsync(StateStoreName, DinoStateKey, dinoState);
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error handling global event for baby dino");
-                return StatusCode(500);
-            }
-        }
-
-        [Topic("pubsub", "dino-nap")]
-        [HttpPost("wake-up")]
-        public async Task<IActionResult> HandleNapEvent([FromBody] dynamic eventData)
-        {
-            _logger.LogInformation("Processing baby dino nap event");
-
-            // Wait a bit for the dino to nap
-            await Task.Delay(TimeSpan.FromSeconds(new Random().Next(20, 60)));
-
-            try
-            {
-                var dinoState = await _daprClient.GetStateAsync<DinoState>(StateStoreName, DinoStateKey);
-                if (dinoState != null && dinoState.IsNapping)
-                {
-                    dinoState.IsNapping = false;
-                    dinoState.Energy += 20; // Naps are energizing!
-                    dinoState.NormalizeValues();
-
-                    await _daprClient.SaveStateAsync(StateStoreName, DinoStateKey, dinoState);
-                    _logger.LogInformation("Baby dino woke up from nap. Energy: {Energy}", dinoState.Energy);
-                }
-
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error handling nap event for baby dino");
-                return StatusCode(500);
             }
         }
 

@@ -22,7 +22,7 @@ namespace ChillTurtleApi.Services
             _logger = logger;
         }
 
-        public string GenerateThought(TurtleState turtleState)
+        public string GenerateThoughts(TurtleState turtleState)
         {
             return _chillThoughts[_random.Next(_chillThoughts.Length)];
         }

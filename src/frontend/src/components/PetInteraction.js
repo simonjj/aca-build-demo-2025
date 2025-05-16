@@ -236,35 +236,7 @@ const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
             Poke
           </Button>
         </Grid>
-        <Grid item xs={6} sm={4}>
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<MusicNoteIcon />}
-            onClick={() => handleInteraction('sing')}
-            disabled={loading}
-            color="info"
-          >
-            Sing To
-          </Button>
-        </Grid>
       </Grid>
-
-      <Box>
-        <Typography variant="subtitle1" gutterBottom>
-          Send a message to {pet.name}:
-        </Typography>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder={`Type a message for ${pet.name}...`}
-          onKeyPress={handleMessage}
-          disabled={loading}
-          InputProps={{
-            startAdornment: <ChatIcon sx={{ mr: 1, color: 'action.active' }} />,
-          }}
-        />
-      </Box>
 
       {state?.lastMessage && (
         <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>

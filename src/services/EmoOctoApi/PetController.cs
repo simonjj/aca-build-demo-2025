@@ -145,7 +145,6 @@ namespace EmoOctoApi.Controllers
 
             try
             {
-
                 // 2️⃣ Child span for Dapr GET
                 OctoState octoState;
                 using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Server))

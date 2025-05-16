@@ -1,20 +1,28 @@
+using BouncyBunApi.Controllers;
+
 public class BunThoughtsService
 {
-    private readonly IHttpClientFactory _clientFactory;
     private readonly ILogger<BunThoughtsService> _logger;
 
-    public BunThoughtsService(IHttpClientFactory clientFactory, ILogger<BunThoughtsService> logger)
+    public BunThoughtsService(ILogger<BunThoughtsService> logger)
     {
-        _clientFactory = clientFactory;
         _logger = logger;
     }
 
-    public async Task TriggerEvolution()
+    public async Task<string> GenerateThoughtAsync(BunState bunState)
     {
-        var client = _clientFactory.CreateClient();
-        _logger.LogInformation("BouncyBun evolving to MegaBun! Broadcasting...");
+        // Simulate generating a thought based on the bun's state
+        var thoughts = new List<string>
+        {
+            "I love to bounce!",
+            "Is it snack time yet?",
+            "I could use a nap.",
+            "Let's go on an adventure!",
+            "Bouncing is my favorite exercise!"
+        };
 
-        var body = JsonContent.Create(new { creature = "bunny", stage = "MegaBun" });
-        await client.PostAsync("http://localhost:3500/v1.0/publish/pubsub/evolution", body);
+        // Randomly select a thought
+        var random = new Random();
+        return await Task.FromResult(thoughts[random.Next(thoughts.Count)]);
     }
 }

@@ -11,9 +11,11 @@ public class PetController : ControllerBase
     private readonly DaprClient _daprClient;
     private const string StateStoreName = "statestore";
     private const string BunStateKey = "bouncybun";
+    private BunThoughtsService _thoughtsService;
 
-    public PetController(DaprClient daprClient)
+    public PetController(DaprClient daprClient, BunThoughtsService thoughtsService)
     {
+        _thoughtsService = thoughtsService;
         _daprClient = daprClient;
     }
 
@@ -25,6 +27,8 @@ public class PetController : ControllerBase
         {
             bunState = new BunState();
         }
+
+        await _thoughtsService.GenerateThoughtAsync(bunState);
         return Ok(bunState);
     }
 
@@ -44,33 +48,12 @@ public class PetController : ControllerBase
             case "poke":
                 bunState.Chaos += 5;
                 break;
-            case "sing":
-                bunState.Calmness += 5;
-                break;
-            case "message":
-                bunState.LastMessage = request.Message ?? "no message";
-                break;
             default:
                 return BadRequest("Unknown action.");
         }
 
-        // Check for evolution
-        if (bunState.Happiness > 50 && bunState.Energy > 50 && bunState.Chaos > 20)
-        {
-            await _daprClient.PublishEventAsync("pubsub", "evolution", new { creature = "bunny", stage = "MegaBun" });
-        }
-
         await _daprClient.SaveStateAsync(StateStoreName, BunStateKey, bunState);
         return Ok(bunState);
-    }
-
-    [Topic("pubsub", "reset-bunny")]
-    [HttpPost("reset")]
-    public async Task<IActionResult> ResetAsync()
-    {
-        var initialState = new BunState();
-        await _daprClient.SaveStateAsync(StateStoreName, BunStateKey, initialState);
-        return Ok(initialState);
     }
 }
 
