@@ -91,10 +91,31 @@ const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        {pet.emoji} {pet.name}
-      </Typography>
-
+      <Box sx = {{display: 'flex', alignItems: 'center', gap:2, mb: 2}}>
+        {pet.image ? (
+          <Box
+            component="img"
+            src={pet.image}
+            alt={pet.name}
+            sx={{
+              width: 80,
+              height: 80,
+              objectFit: 'contain',
+              borderRadius: '8px',
+            }}
+            onError={(e) => {
+              e.currentTarget.setAttribute('data-error', 'true');
+            }}
+          />
+        ) : (
+          <Typography variant="h1" sx={{ fontSize: '3rem' }}>
+            {pet.emoji}
+          </Typography>
+        )}
+        <Typography variant="h4" component="div" gutterBottom>
+          {pet.name}
+        </Typography>
+      </Box>
       {state && (
         <Box sx={{ mb: 3 }}>
           {/* Energy Level with unbounded visualization */}

@@ -4,9 +4,18 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import PetCard from './components/PetCard';
 import PetInteraction from './components/PetInteraction';
 import { getPetState, interactWithPet } from './utils/apiConfig';
+import { preloadPetImages } from './utils/imageLoader';
 
 // 2️⃣ Create tracer + meter
 import { tracer} from './telemetry';
+
+// Import pet images
+import turtleImage from './assets/images/pets/ChillTurtle.png';
+import octoImage from './assets/images/pets/EmoOcto.png';
+import dragonImage from './assets/images/pets/ChaoticDragon.png';
+import dinoImage from './assets/images/pets/BabyDino.png';
+import bunnyImage from './assets/images/pets/BouncyBun.png';
+import pettingLogo from '.assets/images/pets/CloudPettingZooLogo.png';
 
 const theme = createTheme({
   palette: {
@@ -21,11 +30,11 @@ const theme = createTheme({
 
 // Pet configuration following Azure Container Apps microservices pattern
 const PETS = [
-  { id: 'turtle', name: 'ChillTurtle', emoji: '🐢', type: 'turtle' },
-  { id: 'octo', name: 'EmoOcto', emoji: '🐙', type: 'octo' },
-  { id: 'dragon', name: 'ChaosDragon', emoji: '🐉', type: 'dragon' },
-  { id: 'dino', name: 'BabyDino', emoji: '🦖', type: 'dino' },
-  { id: 'bunny', name: 'BouncyBun', emoji: '🐇', type: 'bunny' },
+  { id: 'turtle', name: 'ChillTurtle', emoji: '🐢', type: 'turtle', image: turtleImage },
+  { id: 'octo', name: 'EmoOcto', emoji: '🐙', type: 'octo', image: octoImage },
+  { id: 'dragon', name: 'ChaosDragon', emoji: '🐉', type: 'dragon', image: dragonImage },
+  { id: 'dino', name: 'BabyDino', emoji: '🦖', type: 'dino', image: dinoImage },
+  { id: 'bunny', name: 'BouncyBun', emoji: '🐇', type: 'bunny', image: bunnyImage },
 ];
 
 function App() {
@@ -37,7 +46,8 @@ function App() {
   // Initialize pet states from their respective microservices
   useEffect(() => {
     let isMounted = true;
-  
+    // Preload pet images for better UX
+    preloadPetImages(PETS);
     const span = tracer.startSpan('sanity.check');
     console.log('span started, id =', span.spanContext().spanId);
     span.end();
@@ -124,9 +134,27 @@ function App() {
     <ThemeProvider theme={theme}>
       <Container maxWidth="lg">
         <Box sx={{ my: 4 }}>
+           <Box sx ={{ display: 'flex', justifyContent: 'center', mb: 2, alignItems: 'center', gap: 2 }}>
+            <Box
+              component="img"
+              src={pettingLogo}
+              alt="Cloud Petting Zoo Logo"
+              sx={{
+                width: 100,
+                height: 100,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                marginRight: 2,
+                verticalAlign: 'middle',
+                '@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)': {
+                  imageRendering: 'crisp-edges',
+                },
+              }}
+            />
           <Typography variant="h2" component="h1" gutterBottom align="center">
-            🦴 Cloud Petting Zoo
+            Cloud Petting Zoo
           </Typography>
+          </Box>
           <Typography variant="h5" component="h2" gutterBottom align="center">
             Choose a creature to interact with!
           </Typography>

@@ -6,8 +6,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# copy just your React sources
-COPY . ./
+# Copy React source files to the correct location
+COPY public/ ./public/
+COPY src/ ./src/
+COPY tsconfig*.json ./
+COPY .env* ./
 
 # produce a build/ folder
 RUN npm run build
