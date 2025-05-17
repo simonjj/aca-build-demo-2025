@@ -1,3 +1,5 @@
+using BouncyBunApi.Controllers;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // 0) Bind Kestrel to port 3000 so Dapr can detect your app
@@ -6,7 +8,7 @@ builder.WebHost.UseUrls("http://0.0.0.0:3000");
 // 1) Add Dapr SDK bits
 builder.Services.AddControllers().AddDapr();       // for controller-based Pub/Sub 
 builder.Services.AddDaprClient();                  // for injecting DaprClient
-builder.Services.AddSingleton<PetState>();
+builder.Services.AddSingleton<BunState>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<BunThoughtsService>();
 

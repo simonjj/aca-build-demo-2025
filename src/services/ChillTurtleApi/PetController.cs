@@ -35,7 +35,7 @@ namespace ChillTurtleApi.Controllers
                 {
                     turtleState = new TurtleState();
                     await _daprClient.SaveStateAsync(StateStoreName, TurtleStateKey, turtleState);
-                    _logger.LogInformation("Created new turtle state");
+
                     _thoughtsService.GenerateThoughts(turtleState);
                 }
                 return Ok(turtleState);
@@ -111,10 +111,6 @@ namespace ChillTurtleApi.Controllers
             else if (turtleState.Happiness > 80)
             {
                 turtleState.Mood = "Happy";
-            }
-            else if (turtleState.Happiness > 60)
-            {
-                turtleState.Mood = "Content";
             }
             else if (turtleState.Energy < 20)
             {

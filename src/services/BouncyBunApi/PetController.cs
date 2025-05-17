@@ -26,8 +26,8 @@ public class PetController : ControllerBase
         if (bunState == null)
         {
             bunState = new BunState();
+            await _daprClient.SaveStateAsync(StateStoreName, BunStateKey, bunState);
         }
-
         await _thoughtsService.GenerateThoughtAsync(bunState);
         return Ok(bunState);
     }
@@ -51,23 +51,33 @@ public class PetController : ControllerBase
             default:
                 return BadRequest("Unknown action.");
         }
-
+        UpdateMood(bunState);
         await _daprClient.SaveStateAsync(StateStoreName, BunStateKey, bunState);
         return Ok(bunState);
+    }
+
+    public void UpdateMood(BunState bunState)
+    {
+        if (bunState.Happiness > 10)
+        {
+            bunState.Mood = "happy";
+        }
+        else if (bunState.Energy < 5)
+        {
+            bunState.Mood = "tired";
+        }
+        else if (bunState.Chaos > 10)
+        {
+            bunState.Mood = "chaotic";
+        }
+        else
+        {
+            bunState.Mood = "neutral";
+        }
     }
 }
 
 public class InteractionRequest
 {
     public string Action { get; set; } = string.Empty;
-    public string? Message { get; set; }
-}
-
-public class BunState
-{
-    public int Happiness { get; set; } = 0;
-    public int Energy { get; set; } = 0;
-    public int Chaos { get; set; } = 0;
-    public int Calmness { get; set; } = 0;
-    public string LastMessage { get; set; } = "";
 }
