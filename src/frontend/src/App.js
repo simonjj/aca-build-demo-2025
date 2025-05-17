@@ -4,25 +4,9 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import PetCard from './components/PetCard';
 import PetInteraction from './components/PetInteraction';
 import { getPetState, interactWithPet } from './utils/apiConfig';
-//import { trace, metrics } from '@opentelemetry/api';
 
 // 2️⃣ Create tracer + meter
 import { tracer} from './telemetry';
-
-// create a counter
-// const clickCounter = meter.createCounter('app.button_clicks', {
-//   description: 'Counts how often buttons are clicked'
-// });
-
-// const loadPetStateCounter   = meter.createCounter('app.loadpetstate.counter', {
-//     description: 'Counts loadPetState calls'
-//   });
-// const selectPetCounter       = meter.createCounter('app.selectpet.counter', {
-//     description: 'Counts pet selections'
-//   });
-// const petInteractionCounter  = meter.createCounter('app.petinteraction.counter', {
-//     description: 'Counts pet interaction calls'
-//   });
 
 const theme = createTheme({
   palette: {

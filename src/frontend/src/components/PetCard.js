@@ -25,6 +25,25 @@ const PetCard = ({ pet, isSelected, onClick, state }) => {
       case 'sleepy': return '😴';
       case 'energetic': return '⚡';
       case 'hungry': return '🍔';
+      case 'tired': return '😩';
+      case 'hyperactive': return '😜';
+      case 'playful': return '🎉';
+      case 'bored': return '😒';
+      case 'curious': return '🤔';
+      case 'excited': return '🤩';
+      case 'calm': return '😌';
+      case 'chaotic': return '😵';
+      case 'enraged': return '😤';
+      case 'lethargic': return '😴';
+      case 'content': return '😊';
+      case 'relaxed': return '😌';
+      case 'unpredictable': return '🤯';
+      case 'hiding': return '🙈';
+      case 'anxious': return '😰';
+      case 'agitated': return '😠';
+      case 'sleepy': return '😴';
+      case 'nervous': return '😬';
+      case 'angry': return '😡';
       default: return '😐';
     }
   };
