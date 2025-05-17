@@ -35,8 +35,6 @@ namespace ChillTurtleApi.Controllers
                 {
                     turtleState = new TurtleState();
                     await _daprClient.SaveStateAsync(StateStoreName, TurtleStateKey, turtleState);
-
-                    _thoughtsService.GenerateThoughts(turtleState);
                 }
                 return Ok(turtleState);
             }
@@ -91,6 +89,7 @@ namespace ChillTurtleApi.Controllers
                 turtleState.IsOverwhelmed = false;
             }
 
+            turtleState.LastMessage = _thoughtsService.GenerateThoughts(turtleState);
             // Save updated state
             await _daprClient.SaveStateAsync(StateStoreName, TurtleStateKey, turtleState);
 

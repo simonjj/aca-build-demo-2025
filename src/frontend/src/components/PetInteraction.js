@@ -241,6 +241,14 @@ const PetInteraction = ({ pet, socket, state, onStateUpdate }) => {
         </Grid>
       </Grid>
 
+      {state?.lastMessage && (
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            {pet.name} says: "{state.lastMessage}"
+          </Typography>
+        </Box>
+      )}
+
       <Snackbar open={!!error} autoHideDuration={6000} onClose={closeError}>
         <Alert onClose={closeError} severity="error">
           {error}

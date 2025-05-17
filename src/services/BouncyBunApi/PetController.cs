@@ -28,7 +28,6 @@ public class PetController : ControllerBase
             bunState = new BunState();
             await _daprClient.SaveStateAsync(StateStoreName, BunStateKey, bunState);
         }
-        await _thoughtsService.GenerateThoughtAsync(bunState);
         return Ok(bunState);
     }
 
@@ -52,6 +51,7 @@ public class PetController : ControllerBase
                 return BadRequest("Unknown action.");
         }
         UpdateMood(bunState);
+        bunState.LastMessage = await _thoughtsService.GenerateThoughtAsync(bunState);
         await _daprClient.SaveStateAsync(StateStoreName, BunStateKey, bunState);
         return Ok(bunState);
     }

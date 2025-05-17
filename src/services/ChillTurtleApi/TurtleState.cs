@@ -11,5 +11,6 @@ namespace ChillTurtleApi.Models
         public int StressLevel { get; set; } = 10;
         public bool IsInShell { get; set; } = false;
         public bool IsOverwhelmed { get; set; } = false;
+        public string LastMessage { get; set; } = string.Empty;
     }
 }
