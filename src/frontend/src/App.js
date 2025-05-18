@@ -15,7 +15,7 @@ import octoImage from './assets/images/pets/EmoOcto.png';
 import dragonImage from './assets/images/pets/ChaoticDragon.png';
 import dinoImage from './assets/images/pets/BabyDino.png';
 import bunnyImage from './assets/images/pets/BouncyBun.png';
-import pettingLogo from '.assets/images/pets/CloudPettingZooLogo.png';
+import pettingLogo from './assets/images/pets/PettingLogo.png';
 
 const theme = createTheme({
   palette: {
