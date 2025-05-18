@@ -117,28 +117,23 @@ namespace EmoOctoApi.Services
                 if (octoState.IsInking)
                 {
                     thought = _inkingThoughts[_random.Next(_inkingThoughts.Length)];
-                    _logger.LogInformation("Generated inking thought for octopus");
                 }
                 else if (octoState.IsCamouflaged)
                 {
                     thought = _camouflageThoughts[_random.Next(_camouflageThoughts.Length)];
-                    _logger.LogInformation("Generated camouflage thought for octopus");
                 }
                 else if (octoState.IsEvolved)
                 {
                     thought = _evolvedThoughts[_random.Next(_evolvedThoughts.Length)];
-                    _logger.LogInformation("Generated evolved thought for octopus");
                 }
                 else if (_moodThoughts.TryGetValue(octoState.CurrentMood, out var moodSpecificThoughts))
                 {
                     thought = moodSpecificThoughts[_random.Next(moodSpecificThoughts.Length)];
-                    _logger.LogInformation($"Generated {octoState.CurrentMood} thought for octopus");
                 }
                 else
                 {
                     // Default to curious thoughts if current mood doesn't have specific thoughts
                     thought = _moodThoughts["Curious"][_random.Next(_moodThoughts["Curious"].Length)];
-                    _logger.LogInformation("Generated fallback curious thought for octopus");
                 }
 
                 // Add color reference based on current color
@@ -197,13 +192,12 @@ namespace EmoOctoApi.Services
                             var thoughtResponse = await response.Content.ReadFromJsonAsync<ThoughtResponse>();
                             if (thoughtResponse?.Thought != null)
                             {
-                                _logger.LogInformation("Generated AI octopus thought: {Thought}", thoughtResponse.Thought);
                                 return thoughtResponse.Thought;
                             }
                         }
                         else
                         {
-                            _logger.LogWarning("AI service returned unsuccessful status: {Status}", response.StatusCode);
+                    
                         }
                     }
                     catch (Exception ex)
