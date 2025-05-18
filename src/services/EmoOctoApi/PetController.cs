@@ -251,7 +251,6 @@ namespace EmoOctoApi.Controllers
                 new[] { new KeyValuePair<string, object?>("initialChaos", octoState.Chaos) })));
 
             octoState.Chaos += 15;
-            _logger.LogInformation($"Poke: Chaos={octoState.Chaos}");
             if (octoState.Chaos > 50)
             {
                 octoState.UpdateMood("Nervous");

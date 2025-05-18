@@ -58,15 +58,24 @@ public class PetController : ControllerBase
 
     public void UpdateMood(BunState bunState)
     {
-        if (bunState.Happiness > 10)
+        if (bunState.Happiness > bunState.Energy && bunState.)
         {
             bunState.Mood = "Happy";
         }
-        else if (bunState.Energy < 5)
+        else if (bunState.Energy < bunState.Happiness)
+        {
+            bunState.Mood = "Energetic";
+        }
+        else if (bunState.Energy < bunState.Chaos)
+        {
+            bunState.Mood = "Sleepy";
+        }
+
+        else if (bunState.Chaos > bunState.Energy)
         {
             bunState.Mood = "Tired";
         }
-        else if (bunState.Chaos > 10)
+        else if (bunState.Chaos > bunState.Happiness)
         {
             bunState.Mood = "Chaotic";
         }

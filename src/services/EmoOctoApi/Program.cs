@@ -54,6 +54,7 @@ builder.Logging
     // Custom filters for important logs you do want to keep
     .AddFilter("Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware.RequestBody", LogLevel.Warning)
     .AddFilter("Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware.ResponseBody", LogLevel.Warning)
+    .AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning)
     // Keep Dapr related logs
     .AddFilter("Dapr", LogLevel.Information);
 
