@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 1) Kestrel port
 builder.WebHost.UseUrls("http://0.0.0.0:3004");
-var meter = new Meter("EmoOctoApi.GlobalMetrics", "1.0.0");
+var meter = new Meter("EmoOctoApi", "1.0.0");
 
 var requestCounter = meter.CreateCounter<long>(
     name: "api_requests_total",
@@ -73,7 +73,7 @@ builder.Services.AddOpenTelemetry()
    .WithTracing(tracing =>
    {
        tracing
-           .AddSource(meter.Name)
+           .AddSource("EmoOctoApi.PetController")
            .AddAspNetCoreInstrumentation()
            .AddHttpClientInstrumentation()
            .AddConsoleExporter()
@@ -82,11 +82,11 @@ builder.Services.AddOpenTelemetry()
    .WithMetrics(metrics =>
    {
        metrics
-           .AddMeter(meter.Name)
+           .AddMeter("EmoOctoApi")
            .AddAspNetCoreInstrumentation()
            .AddHttpClientInstrumentation()
            .AddConsoleExporter()
-              .AddOtlpExporter();
+           .AddOtlpExporter();
    })
     .WithLogging(logging =>
    {

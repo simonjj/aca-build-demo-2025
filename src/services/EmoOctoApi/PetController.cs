@@ -22,36 +22,27 @@ namespace EmoOctoApi.Controllers
         private const string StateStoreName = "statestore";
         private const string OctoStateKey = "emoocto";
 
-        // ─── OpenTelemetry Instrumentation ────────────────────────────────────────────
-
-        // 1️⃣ ActivitySource for tracing
         private static readonly ActivitySource _activitySource = new("EmoOctoApi.PetController", "1.0.0");
-
-        // 2️⃣ Meter and instruments for metrics
         private static readonly Meter _meter = new("EmoOctoApi", "1.0.0");
-        private static readonly Counter<long> _interactionsCounter =
-            _meter.CreateCounter<long>("octo_interactions_total", description: "Total number of interact calls");
-        private static readonly Counter<long> _errorCounter =
-            _meter.CreateCounter<long>("octo_errors_total", description: "Total number of errors");
-        private static readonly Histogram<double> _durationHistogram =
-            _meter.CreateHistogram<double>("octo_request_duration_ms", description: "Request duration in milliseconds");
 
-        // Add this with your other metrics at the top of the class
-        private static readonly ObservableGauge<int> _chaosGauge =
-            _meter.CreateObservableGauge<int>("octo_chaos_level",
-                () => new[] { new Measurement<int>(GetCurrentChaosLevel()) },
-                description: "Current chaos level of the octopus");
+        private static readonly Counter<long> _interactionsCounter = _meter.CreateCounter<long>("octo_interactions_total", description: "Total number of interact calls");
+        private static readonly Counter<long> _errorCounter = _meter.CreateCounter<long>("octo_errors_total", description: "Total number of errors");
+        private static readonly Counter<long> _pokeCounter = _meter.CreateCounter<long>("octo_poke_total", description: "Total number of pokes");
+        private static readonly Histogram<double> _durationHistogram = _meter.CreateHistogram<double>("octo_request_duration_ms", description: "Request duration in milliseconds");
+        private static readonly Counter<long> _throttlingCounter = _meter.CreateCounter<long>("octo_throttling_total", description: "Number of times the octopus has throttled interactions");
+        private static readonly Histogram<int> _chaosLevelHistogram =
+            _meter.CreateHistogram<int>("octo_chaos_level", description: "Recorded chaos level of the octopus");
 
-        // Add this static property to store the current chaos level
+        private static readonly Histogram<double> _timeSinceLastThrottleHistogram =
+            _meter.CreateHistogram<double>("octo_time_since_last_throttle_seconds", description: "Time since last throttle in seconds");
+
+        private static readonly Histogram<double> _throttlingDurationHistogram =
+            _meter.CreateHistogram<double>("octo_throttling_duration_seconds", description: "Duration of throttling periods");
+
         private static int _currentChaosLevel = 0;
+        private static DateTime _lastThrottleTime = DateTime.MinValue;
 
-        // Add this helper method to get the current chaos level
-        private static int GetCurrentChaosLevel() => _currentChaosLevel;
-
-        public PetController(
-            DaprClient daprClient,
-            ILogger<PetController> logger,
-            OctoThoughtsService thoughtsService)
+        public PetController(DaprClient daprClient, ILogger<PetController> logger, OctoThoughtsService thoughtsService)
         {
             _daprClient = daprClient;
             _logger = logger;
@@ -61,79 +52,62 @@ namespace EmoOctoApi.Controllers
         [HttpGet("state")]
         public async Task<IActionResult> GetStateAsync()
         {
-            // Start a root span for this HTTP operation
             using var activity = _activitySource.StartActivity("GetOctoState", ActivityKind.Server);
             activity?.SetTag("http.method", "GET");
             activity?.SetTag("http.endpoint", "/pet/state");
             var sw = Stopwatch.StartNew();
+
             try
             {
-
-                // 2️⃣ Child span for the Dapr GET from redis
                 OctoState octoState;
-                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Server))
+                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Client))
                 {
                     getSpan?.SetTag("state.store", StateStoreName);
                     getSpan?.SetTag("state.key", OctoStateKey);
                     octoState = await _daprClient.GetStateAsync<OctoState>(StateStoreName, OctoStateKey);
                 }
 
-                if (octoState is null)
+                if (octoState == null)
                 {
                     _logger.LogInformation("State not found; initializing new OctoState");
-
-                    // 3️⃣ Child span for the Dapr SAVE to redis
-                    using var saveSpan = _activitySource.StartActivity("Dapr.SaveState", ActivityKind.Server);
-                    saveSpan?.SetTag("state.store", StateStoreName);
-                    saveSpan?.SetTag("state.key", OctoStateKey);
-
+                    using var saveSpan = _activitySource.StartActivity("Dapr.SaveState", ActivityKind.Client);
                     octoState = new OctoState();
                     await _daprClient.SaveStateAsync(StateStoreName, OctoStateKey, octoState);
                 }
 
-                // 4️⃣ Child span for thought generation (your backend service call)
-                using (var thoughtSpan = _activitySource.StartActivity("GenerateThought", ActivityKind.Server))
+                using (var thoughtSpan = _activitySource.StartActivity("GenerateThought", ActivityKind.Internal))
                 {
                     octoState.LastMessage = await _thoughtsService.GenerateThoughtAsync(octoState);
                     thoughtSpan?.SetTag("thought.length", octoState.LastMessage?.Length ?? 0);
                 }
 
-                // Add an event to the trace
                 activity?.AddEvent(new ActivityEvent("StateFetched"));
                 return Ok(octoState);
             }
-            catch (DaprException dex)
-            {
-                _logger.LogError(dex, "Dapr failure retrieving or saving state");
-                activity?.SetStatus(ActivityStatusCode.Error, dex.Message);
-                _errorCounter.Add(1, KeyValuePair.Create("endpoint", (object?)"GetState"));
-                return StatusCode(503, new { error = "State store unavailable" });
-            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error in GetStateAsync");
+                _logger.LogError(ex, "Error retrieving state");
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                _errorCounter.Add(1, new[] { new KeyValuePair<string, object?>("endpoint", "GetState") });
+                _errorCounter.Add(1, new KeyValuePair<string, object?>("endpoint", "GetState"));
                 return StatusCode(500, new { error = "Internal server error" });
             }
             finally
             {
                 sw.Stop();
-                _durationHistogram.Record(sw.Elapsed.TotalMilliseconds, new[] { new KeyValuePair<string, object?>("endpoint", "GetState") });
+                _durationHistogram.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "GetState"));
             }
         }
 
         [HttpPost("interact")]
         public async Task<IActionResult> InteractAsync([FromBody] InteractionRequest request)
         {
-            // 1️⃣ Root span for the HTTP POST /pet/interact
             using var activity = _activitySource.StartActivity("OctoInteraction", ActivityKind.Server);
             activity?.SetTag("http.method", "POST");
             activity?.SetTag("http.endpoint", "/pet/interact");
             activity?.SetTag("interaction.action", request.Action);
             var sw = Stopwatch.StartNew();
 
-            _interactionsCounter.Add(1, new[] { new KeyValuePair<string, object?>("action", request.Action) });
+            _interactionsCounter.Add(1, new KeyValuePair<string, object?>("action", request.Action));
 
             if (string.IsNullOrWhiteSpace(request.Action))
             {
@@ -145,55 +119,58 @@ namespace EmoOctoApi.Controllers
 
             try
             {
-                // 2️⃣ Child span for Dapr GET
                 OctoState octoState;
-                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Server))
+                using (var getSpan = _activitySource.StartActivity("Dapr.GetState", ActivityKind.Client))
                 {
                     getSpan?.SetTag("state.store", StateStoreName);
                     getSpan?.SetTag("state.key", OctoStateKey);
-                    getSpan?.SetTag("http.method", "GET");
-                    octoState = await _daprClient.GetStateAsync<OctoState>(StateStoreName, OctoStateKey)
-                                 ?? new OctoState();
+                    octoState = await _daprClient.GetStateAsync<OctoState>(StateStoreName, OctoStateKey) ?? new OctoState();
                 }
 
-                // Business logic branch
                 switch (request.Action.ToLowerInvariant())
                 {
                     case "pet":
-                        HandlePet(octoState, activity);
+                        using (var petSpan = _activitySource.StartActivity("PetOctopus", ActivityKind.Internal))
+                        {
+                            HandlePet(octoState, petSpan);
+                        }
                         break;
                     case "feed":
-                        HandleFeed(octoState, activity);
+                        using (var feedSpan = _activitySource.StartActivity("FeedOctopus", ActivityKind.Internal))
+                        {
+                            HandleFeed(octoState, feedSpan);
+                        }
                         break;
                     case "poke":
-                        HandlePoke(octoState, activity);
+                        using (var pokeSpan = _activitySource.StartActivity("PokeOctopus", ActivityKind.Internal))
+                        {
+                            pokeSpan?.SetTag("interaction.Action", request.Action);
+                            pokeSpan?.SetTag("interaction.Message", request.Message);
+                            pokeSpan?.SetTag("octopus.chaos", octoState.Chaos);
+                            HandlePoke(octoState, pokeSpan);
+                        }
                         break;
                     default:
                         _logger.LogWarning($"Unknown action: {request.Action}");
                         activity?.SetStatus(ActivityStatusCode.Error, "UnknownAction");
-                        _errorCounter.Add(1, new[]
-                        {
+                        _errorCounter.Add(1, new[] {
                             new KeyValuePair<string, object?>("endpoint", "Interact"),
                             new KeyValuePair<string, object?>("reason", "UnknownAction")
                         });
                         return BadRequest(new { error = $"Unknown action: {request.Action}" });
                 }
 
-                // 4️⃣ Child span for Dapr SAVE
                 using (var saveSpan = _activitySource.StartActivity("Dapr.SaveState", ActivityKind.Client))
                 {
                     saveSpan?.SetTag("state.store", StateStoreName);
                     saveSpan?.SetTag("state.key", OctoStateKey);
                     await _daprClient.SaveStateAsync(StateStoreName, OctoStateKey, octoState);
-                    activity?.AddEvent(new ActivityEvent("StateSaved"));
                 }
 
-                // 5️⃣ Child span for final thought generation
                 using (var thoughtSpan = _activitySource.StartActivity("GenerateThought", ActivityKind.Internal))
                 {
                     octoState.LastMessage = await _thoughtsService.GenerateThoughtAsync(octoState);
                     thoughtSpan?.SetTag("thought.length", octoState.LastMessage?.Length ?? 0);
-                    activity?.AddEvent(new ActivityEvent("ThoughtGenerated"));
                 }
 
                 return Ok(octoState);
@@ -202,8 +179,7 @@ namespace EmoOctoApi.Controllers
             {
                 _logger.LogError(ex, $"Error processing interaction '{request.Action}'");
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                _errorCounter.Add(1, new[]
-                {
+                _errorCounter.Add(1, new[] {
                     new KeyValuePair<string, object?>("endpoint", "Interact"),
                     new KeyValuePair<string, object?>("reason", "ProcessingError")
                 });
@@ -212,100 +188,76 @@ namespace EmoOctoApi.Controllers
             finally
             {
                 sw.Stop();
-                _durationHistogram.Record(sw.Elapsed.TotalMilliseconds, new[]
-                {
+                _durationHistogram.Record(sw.Elapsed.TotalMilliseconds, new[] {
                     new KeyValuePair<string, object?>("endpoint", "Interact"),
                     new KeyValuePair<string, object?>("action", request.Action)
                 });
             }
         }
 
-        // ─── Helper methods for each action type ────────────────────────────────────
-
-        private void HandlePet(OctoState octoState, Activity? activity)
+        private void HandlePet(OctoState octoState, Activity? span)
         {
-            // Example business logic
             octoState.Happiness += 5;
+            span?.SetTag("happiness", octoState.Happiness);
             if (octoState.Happiness > 75)
             {
                 octoState.UpdateMood("Happy");
-                activity?.AddTag("mood", "Happy");
+                span?.SetTag("mood", "Happy");
             }
         }
 
-        private void HandleFeed(OctoState octoState, Activity? activity)
+        private void HandleFeed(OctoState octoState, Activity? span)
         {
             octoState.Energy += 10;
+            span?.SetTag("energy", octoState.Energy);
             if (octoState.Energy > 80)
             {
                 octoState.UpdateMood("Energetic");
-                activity?.AddTag("mood", "Energetic");
+                span?.SetTag("mood", "Energetic");
             }
-
         }
 
-        private void HandlePoke(OctoState octoState, Activity? activity)
+        private void HandlePoke(OctoState octoState, Activity? parentActivity)
         {
-            // Azure best practice: Add tracing events for important state changes
-            activity?.AddEvent(new ActivityEvent("PokeStarted", tags: new ActivityTagsCollection(
-                new[] { new KeyValuePair<string, object?>("initialChaos", octoState.Chaos) })));
-
-            octoState.Chaos += 15;
-            if (octoState.Chaos > 50)
+            using (var pokeStartedSpan = _activitySource.StartActivity("PokeStarted", ActivityKind.Internal))
             {
-                octoState.UpdateMood("Nervous");
-                activity?.AddTag("mood", "Nervous");
-            }
-            else if (octoState.Chaos > 75)
-            {
-                octoState.UpdateMood("Angry");
-                activity?.AddTag("mood", "Angry");
-            }
-            else if (octoState.Chaos > 100)
-            {
-                octoState.UpdateMood("Furious");
-                activity?.AddTag("mood", "Furious");
+                pokeStartedSpan?.SetTag("initialChaos", octoState.Chaos);
+                octoState.Chaos += 15;
+                _chaosLevelHistogram.Record(octoState.Chaos, new KeyValuePair<string, object?>("action", "poke"));
+                _timeSinceLastThrottleHistogram.Record(
+                    (DateTime.UtcNow - _lastThrottleTime).TotalSeconds,
+                    new KeyValuePair<string, object?>("action", "poke"));
+                _currentChaosLevel = octoState.Chaos;
+                _pokeCounter.Add(1);
+                pokeStartedSpan?.SetTag("finalChaos", octoState.Chaos);
             }
 
-            // Azure best practice: Apply proper throttling with structured logging
-            if (octoState.Chaos > 20000)
+            using (var throttleSpan = _activitySource.StartActivity("ThrottlingCheck", ActivityKind.Internal))
             {
-                // Azure best practice: Record throttling events in metrics for monitoring
-                _errorCounter.Add(1, new[] {
-            new KeyValuePair<string, object?>("endpoint", "Interact"),
-            new KeyValuePair<string, object?>("reason", "ThrottlingApplied")
-        });
+                throttleSpan?.SetTag("octopus.chaos", octoState.Chaos);
+                throttleSpan?.SetTag("action", "poke");
 
-                activity?.AddTag("throttling.applied", true);
-                activity?.AddEvent(new ActivityEvent("ThrottlingApplied"));
-
-                octoState.UpdateMood("Furious");
-                octoState.LastMessage = "Octopus is overwhelmed and needs a break. Try again later.";
-
-                _logger.LogWarning($"Throttling applied: Chaos={octoState.Chaos}");
-
-                // Azure best practice: Add contextual information to span for better diagnostics
-                activity?.AddTag("mood", "Furious");
-                activity?.SetStatus(ActivityStatusCode.Error, "ThrottlingApplied");
-
-                throw new ThrottlingException(
-                    $"Chaos level too extreme ({octoState.Chaos}). Throttling!"
-                );
+                if (octoState.Chaos > 1000)
+                {
+                    _lastThrottleTime = DateTime.UtcNow;
+                    _throttlingCounter.Add(1);
+                    _errorCounter.Add(1);
+                    throttleSpan?.SetTag("throttling.applied", true);
+                    throttleSpan?.SetTag("throttling.reason", "ChaosLevelExceeded");
+                    octoState.UpdateMood("Furious");
+                    parentActivity?.SetStatus(ActivityStatusCode.Error, "ThrottlingApplied");
+                    throw new ThrottlingException($"Chaos level too extreme ({octoState.Chaos}). Throttling!");
+                }
+                else
+                {
+                    throttleSpan?.SetTag("throttling.applied", false);
+                }
             }
-
-            activity?.AddEvent(new ActivityEvent("PokeCompleted", tags: new ActivityTagsCollection(
-                new[] { new KeyValuePair<string, object?>("finalChaos", octoState.Chaos) })));
         }
 
-        // Azure best practice: Create a specific exception type for throttling to enable proper handling/status codes
         public class ThrottlingException : Exception
         {
-            public string message { get; } = "";
-
-            public ThrottlingException(string message) : base(message)
-            {
-                this.message = message;
-            }
+            public ThrottlingException(string message) : base(message) { }
         }
     }
 }
