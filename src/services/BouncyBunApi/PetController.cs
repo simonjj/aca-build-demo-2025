@@ -60,19 +60,19 @@ public class PetController : ControllerBase
     {
         if (bunState.Happiness > 10)
         {
-            bunState.Mood = "happy";
+            bunState.Mood = "Happy";
         }
         else if (bunState.Energy < 5)
         {
-            bunState.Mood = "tired";
+            bunState.Mood = "Tired";
         }
         else if (bunState.Chaos > 10)
         {
-            bunState.Mood = "chaotic";
+            bunState.Mood = "Chaotic";
         }
         else
         {
-            bunState.Mood = "neutral";
+            bunState.Mood = "Neutral";
         }
     }
 }
