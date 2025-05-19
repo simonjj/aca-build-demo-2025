@@ -49,6 +49,8 @@ rules:
           prefixRewrite: /pet/state
     targets:
       - containerApp: chillturtle-api
+      - revision: chillturtle-api-001
+      - label: staging
 
   - description: ChaosDragon API route
     routes:
