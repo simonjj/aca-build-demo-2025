@@ -2,15 +2,15 @@ rules:
   - description: EmoOcto API route
     routes:
       - match:
-          prefix: /api/octo/healthz
+          prefix: /api/emoocto-api/healthz
         action:
           prefixRewrite: /healthz
       - match:
-          prefix: /pet/interact
+          prefix: /api/emoocto-api/pet/interact
         action:
           prefixRewrite: /pet/interact
       - match:
-          prefix: /pet/state
+          prefix: /api/emoocto-api/pet/state
         action:
           prefixRewrite: /pet/state
     targets:
@@ -19,35 +19,67 @@ rules:
   - description: BouncyBun API route
     routes:
       - match:
-          prefix: /api/bunny/healthz
+          prefix: /api/bouncybun-api/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: /api/bouncybun-api/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: /api/bouncybun-api/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: bouncy-bun
 
   - description: ChillTurtle API route
     routes:
       - match:
-          prefix: /api/turtle/healthz
+          prefix: /api/chillturtle-api/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: /api/chillturtle-api/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: /api/chillturtle-api/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: chillturtle-api
 
   - description: ChaosDragon API route
     routes:
       - match:
-          prefix: /api/dragon/healthz
+          prefix: /api/chaosdragon-api/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: /api/chaosdragon-api/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: /api/chaosdragon-api/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: chaosdragon-api
 
   - description: BabyDino API route
     routes:
       - match:
-          prefix: /api/dino/healthz
+          prefix: /api/babydino-api/healthz
         action:
           prefixRewrite: /healthz
+      - match:
+          prefix: /api/babydino-api/pet/interact
+        action:
+          prefixRewrite: /pet/interact
+      - match:
+          prefix: /api/babydino-api/pet/state
+        action:
+          prefixRewrite: /pet/state
     targets:
       - containerApp: babydino-api
